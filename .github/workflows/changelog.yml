@@ -50,3 +50,15 @@ jobs:
           echo $output_json
           output_no_newlines=$(echo "$output_json" | tr -d '\n')
           echo "json=$output_no_newlines" >> $GITHUB_OUTPUT
+
+      - name: Update major version tag (v${{ steps.release.outputs.major }})
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git tag -d v${{ steps.release.outputs.major }} || true
+          git push origin :v${{ steps.release.outputs.major }} || true
+          git tag -a v${{ steps.release.outputs.major }} ${{ steps.release.outputs.sha }} -m "Release v${{ steps.release.outputs.major }}"
+          git push origin v${{ steps.release.outputs.major }}
