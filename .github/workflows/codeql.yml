@@ -10,7 +10,7 @@ on:
 
 jobs:
   analyze-nodejs:
-    name: Analyze Node.js
+    name: Analyze Actions
     runs-on: "ubuntu-latest"
     timeout-minutes: 360
     permissions:
