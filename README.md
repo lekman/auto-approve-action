@@ -4,7 +4,7 @@ Auto-Approve GitHub Action is a composite action that brings automated pull requ
 
 Key features include:
 
-- **Workflow Validation** - Author allowlists, label requirements, and status check verification
+- **Workflow Validation** - Author allow lists, label requirements, and status check verification
 - **Flexible Configuration** - Customizable approval criteria for different workflow scenarios
 - **Audit Trails** - Detailed logging and approval decision documentation
 - **Composite Action Architecture** - Reusable across multiple repositories and teams

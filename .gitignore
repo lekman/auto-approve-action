@@ -404,3 +404,53 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# AI
+.taskmaster
+tasks
+.cursor
+.roo
+.roomodes
+CLAUDE.md
+
+# Specific shared settings for debug and start
+!.vscode/launch.json
+!.vscode/settings.json
+!.vscode/tasks.json
+
+# Local settings
+.npmrc
+
+# Test results and coverage
+**/coverage
+
+# Added by Task Master AI
+# Logs
+logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dev-debug.log
+# Dependency directories
+# Environment variables
+.env
+# Editor directories and files
+.idea
+.vscode
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+.DS_Store
+# Task files
+tasks.json
+tasks/ 
+
+# Webpack
+package/**
+out/
+dist
+dist/**.* */
+temp.md
+bug.md
