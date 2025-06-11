@@ -354,8 +354,6 @@ main() {
             echo "---"
             if [[ "${DRY_RUN:-false}" == "true" ]]; then
                 echo "*This was a dry run. No actual approval or merge was performed.*"
-            else
-                echo "*This approval was performed automatically by the Auto-Approve GitHub Action.*"
             fi
         } >> "$GITHUB_STEP_SUMMARY"
     fi
