@@ -3,6 +3,7 @@ name: Continuous Integration
 on:
   workflow_dispatch:
   pull_request:
+    types: [opened, synchronize, reopened]
 
 # Note: This workflow includes many tests that intentionally fail to verify error handling.
 # Tests with "Should Fail" in their name are expected to exit with code 1.
