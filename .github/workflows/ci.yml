@@ -38,6 +38,7 @@ jobs:
   # Unit Tests - Run all script unit tests
   unit-tests:
     name: Unit Tests
+    needs: setup
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -59,7 +60,7 @@ jobs:
       - name: Run ${{ matrix.test.name }} Tests
         run: ${{ matrix.test.script }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ needs.setup.outputs.token }}
           CI: true
 
   # Integration Tests - Test the action in PR context
@@ -71,26 +72,20 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    env:
-      APP_TOKEN: ${{ needs.setup.outputs.token }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
-      - name: Debug token availability
-        run: |
-          echo "APP_TOKEN from env is available: ${APP_TOKEN:+true}"
-          echo "APP_TOKEN length: ${#APP_TOKEN}"
-          echo "Direct token is available: ${{ needs.setup.outputs.token != '' }}"
       
       # Test basic approval without checks
       - name: Test Basic Approval (No Checks)
         uses: ./
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'false'
+        env:
+          GITHUB_TOKEN: ${{ needs.setup.outputs.token }}
       
       # Test author verification
       - name: Test Unauthorized Author (Should Fail)
@@ -98,10 +93,12 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: 'definitely-not-the-pr-author'
           label-match-mode: 'none'
           wait-for-checks: 'false'
+        env:
+          GITHUB_TOKEN: ${{ needs.setup.outputs.token }}
       
       - name: Verify Unauthorized Test Failed
         if: steps.test-unauthorized.outcome != 'failure'
@@ -113,19 +110,23 @@ jobs:
       - name: Test Bot Author Pattern
         uses: ./
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: '${{ github.actor }},dependabot[bot],renovate[bot]'
           label-match-mode: 'none'
           wait-for-checks: 'false'
+        env:
+          GITHUB_TOKEN: ${{ needs.setup.outputs.token }}
       
       # Test with multiple authors
       - name: Test Multiple Authors
         uses: ./
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: 'user1,user2,${{ github.actor }},user3'
           label-match-mode: 'none'
           wait-for-checks: 'false'
+        env:
+          GITHUB_TOKEN: ${{ needs.setup.outputs.token }}
 
   # Label validation tests
   label-tests:
@@ -151,6 +152,8 @@ jobs:
           required-labels: 'do-not-merge,wip,blocked'
           label-match-mode: 'none'
           wait-for-checks: 'false'
+        env:
+          GITHUB_TOKEN: ${{ needs.setup.outputs.token }}
       
       # Test empty label validation
       - name: Test Empty Labels with Mode Any (Should Fail)
@@ -162,6 +165,8 @@ jobs:
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'any'
           wait-for-checks: 'false'
+        env:
+          GITHUB_TOKEN: ${{ needs.setup.outputs.token }}
       
       - name: Verify Empty Label Test Failed
         if: steps.test-empty-any.outcome != 'failure'
@@ -180,6 +185,8 @@ jobs:
           required-labels: 'test-label,approved,ready'
           label-match-mode: 'all'
           wait-for-checks: 'false'
+        env:
+          GITHUB_TOKEN: ${{ needs.setup.outputs.token }}
       
       - name: Verify Mode All Failed
         if: steps.test-all-fail.outcome != 'failure'
@@ -207,7 +214,7 @@ jobs:
       - name: Test with Check Waiting Disabled
         uses: ./
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'false'
@@ -216,7 +223,7 @@ jobs:
       - name: Create Test Check
         uses: actions/github-script@v7
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           script: |
             const { data: pr } = await github.rest.pulls.get({
               owner: context.repo.owner,
@@ -246,7 +253,7 @@ jobs:
       - name: Test Waiting for Specific Check
         uses: ./
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'true'
@@ -259,7 +266,7 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'true'
@@ -276,7 +283,7 @@ jobs:
       - name: Create Failing Check
         uses: actions/github-script@v7
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           script: |
             const { data: pr } = await github.rest.pulls.get({
               owner: context.repo.owner,
@@ -298,7 +305,7 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'true'
@@ -323,7 +330,7 @@ jobs:
       - name: Run input validation unit tests
         run: ./scripts/test-validate-inputs.sh
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ needs.setup.outputs.token }}
           CI: true
 
   # Input validation tests (for PR contexts)
@@ -345,7 +352,7 @@ jobs:
       - name: Test Minimal Valid Inputs
         uses: ./
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: 'user1,user2,dependabot[bot],${{ github.actor }}'
           label-match-mode: 'none'
           wait-for-checks: 'false'
@@ -353,7 +360,7 @@ jobs:
       - name: Test All Valid Inputs
         uses: ./
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: 'user1,user2,renovate[bot],${{ github.actor }}'
           wait-for-checks: 'false'
           max-wait-time: '60'
@@ -366,7 +373,7 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
       
       - name: Verify Missing Authors Failed
         if: steps.test-missing-authors.outcome != 'failure'
@@ -377,7 +384,7 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: 'user1'
           label-match-mode: 'invalid'
       
@@ -390,7 +397,7 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: 'user1'
           wait-for-checks: 'yes'
       
@@ -403,7 +410,7 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: 'user1'
           max-wait-time: '-5'
       
@@ -416,7 +423,7 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: 'user1'
           max-wait-time: '500'
       
@@ -443,7 +450,7 @@ jobs:
       - name: Test Basic Approval
         uses: ./
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'false'
@@ -455,7 +462,7 @@ jobs:
       - name: Test Duplicate Approval (Should Skip)
         uses: ./
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'false'
@@ -464,7 +471,7 @@ jobs:
       - name: Add Test Label
         uses: actions/github-script@v7
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           script: |
             try {
               await github.rest.issues.addLabels({
@@ -499,7 +506,7 @@ jobs:
       - name: Test Approval with Label
         uses: ./
         with:
-          github-token: ${{ env.APP_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: ${{ github.actor }}
           required-labels: 'ci-test'
           label-match-mode: 'any'
