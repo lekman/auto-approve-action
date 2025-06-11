@@ -1,0 +1,23 @@
+name: Auto Approve Release Please PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - 'release-please-*'
+
+jobs:
+  auto-approve:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Auto Approve PR
+        uses: lekman/auto-approve-action@main
+        with:
+          github-token: ${{ secrets.CODE_OWNER_TOKEN }}
+          allowed-authors: "lekman"
+          required-labels: "autorelease: pending"
+          label-match-mode: "all"
+          wait-for-checks: true 

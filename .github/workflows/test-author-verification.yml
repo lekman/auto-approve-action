@@ -1,0 +1,92 @@
+name: Test Author Verification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize]
+  push:
+    paths:
+      - 'scripts/verify-author.sh'
+      - 'action.yml'
+      - '.github/workflows/test-author-verification.yml'
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  test-author-verification:
+    name: Test Author Verification
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Test with authorized author (should pass)
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+      
+      - name: Test with unauthorized author (should fail)
+        id: unauthorized-test
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-authors: 'definitely-not-the-pr-author'
+          label-match-mode: 'none'
+      
+      - name: Verify unauthorized test failed
+        if: steps.unauthorized-test.outcome != 'failure'
+        run: |
+          echo "Expected unauthorized author test to fail, but it passed"
+          exit 1
+
+  test-bot-authors:
+    name: Test Bot Author Handling
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Test with bot author pattern
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-authors: '${{ github.actor }},dependabot[bot],renovate[bot]'
+          label-match-mode: 'none'
+
+  test-multiple-authors:
+    name: Test Multiple Authors
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Test with multiple allowed authors
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-authors: 'user1,user2,${{ github.actor }},user3'
+          label-match-mode: 'none'
+
+  test-unit-tests:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+      
+      - name: Run author verification tests
+        run: |
+          ./scripts/test-verify-author.sh
