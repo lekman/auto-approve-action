@@ -1,3 +1,6 @@
+# This workflow is designed to run as the GitHub Actions app using the default GITHUB_TOKEN.
+# No additional GitHub App installation is required for standard use.
+
 name: "Generate Changelog"
 
 on:
@@ -37,7 +40,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         id: release
         with:
-          token: ${{ secrets.NPM_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           target-branch: ${{ github.ref_name}}
           config-file: .github/release-config.json
           manifest-file: .github/release-manifest.json
