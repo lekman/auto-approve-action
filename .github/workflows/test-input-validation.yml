@@ -2,6 +2,8 @@ name: Test Input Validation
 
 on:
   workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize]
   push:
     paths:
       - 'scripts/validate-inputs.sh'

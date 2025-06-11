@@ -88,5 +88,4 @@ jobs:
           sudo apt-get install -y jq
       
       - name: Run author verification tests
-        run: |
-          ./scripts/test-verify-author.sh
+        run: ./scripts/test-verify-author.sh

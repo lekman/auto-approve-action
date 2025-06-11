@@ -7,12 +7,22 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VERIFY_SCRIPT="$SCRIPT_DIR/verify-author.sh"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Detect if running in CI
+if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    # No colors in CI
+    RED=''
+    GREEN=''
+    YELLOW=''
+    BLUE=''
+    NC=''
+else
+    # Colors for output
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    NC='\033[0m' # No Color
+fi
 
 # Test counter
 TESTS_PASSED=0
@@ -58,11 +68,19 @@ run_test() {
     local allowed_authors="$4"
     local pr_number="${5:-123}"
     
-    echo -e "${YELLOW}Running test: $test_name${NC}"
+    if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+        echo "Running test: $test_name"
+    else
+        echo -e "${YELLOW}Running test: $test_name${NC}"
+    fi
     
     # Skip if no GitHub token (for CI environments)
     if [[ -z "${GITHUB_TOKEN:-}" ]] && [[ "$mock_author" != "MOCK:"* ]]; then
-        echo -e "${BLUE}⚠ Test skipped (no GITHUB_TOKEN)${NC}"
+        if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+            echo "⚠ Test skipped (no GITHUB_TOKEN)"
+        else
+            echo -e "${BLUE}⚠ Test skipped (no GITHUB_TOKEN)${NC}"
+        fi
         ((TESTS_SKIPPED++))
         echo
         return
@@ -87,16 +105,24 @@ run_test() {
     fi
     
     # Cleanup mock if used
-    if [[ "$mock_author" != "" ]]; then
+    if [[ -n "${MOCK_DIR:-}" ]]; then
         cleanup_mock
     fi
     
     # Check if result matches expectation
     if [[ "$actual_result" == "$expected_result" ]]; then
-        echo -e "${GREEN}✓ Test passed${NC}"
+        if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+            echo "✓ Test passed"
+        else
+            echo -e "${GREEN}✓ Test passed${NC}"
+        fi
         ((TESTS_PASSED++))
     else
-        echo -e "${RED}✗ Test failed (expected: $expected_result, got: $actual_result)${NC}"
+        if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+            echo "✗ Test failed (expected: $expected_result, got: $actual_result)"
+        else
+            echo -e "${RED}✗ Test failed (expected: $expected_result, got: $actual_result)${NC}"
+        fi
         ((TESTS_FAILED++))
     fi
     
@@ -155,7 +181,11 @@ run_test "Empty author (should fail)" "fail" \
 
 # API failure simulation (using invalid PR number with real API)
 if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    echo -e "${YELLOW}Running real API tests...${NC}"
+    if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+        echo "Running real API tests..."
+    else
+        echo -e "${YELLOW}Running real API tests...${NC}"
+    fi
     
     # This should fail because PR 999999999 likely doesn't exist
     run_test "API failure - invalid PR" "fail" \
@@ -166,11 +196,20 @@ fi
 
 # Summary
 echo "======================================="
-echo -e "${GREEN}Tests passed: $TESTS_PASSED${NC}"
-echo -e "${RED}Tests failed: $TESTS_FAILED${NC}"
-echo -e "${BLUE}Tests skipped: $TESTS_SKIPPED${NC}"
+if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "Tests passed: $TESTS_PASSED"
+    echo "Tests failed: $TESTS_FAILED"
+    echo "Tests skipped: $TESTS_SKIPPED"
+else
+    echo -e "${GREEN}Tests passed: $TESTS_PASSED${NC}"
+    echo -e "${RED}Tests failed: $TESTS_FAILED${NC}"
+    echo -e "${BLUE}Tests skipped: $TESTS_SKIPPED${NC}"
+fi
 echo "======================================="
 
 if [[ $TESTS_FAILED -gt 0 ]]; then
     exit 1
 fi
+
+# Explicit success exit
+exit 0
