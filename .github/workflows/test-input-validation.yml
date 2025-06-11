@@ -147,6 +147,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           allowed-authors: 'user1'
           label-match-mode: 'all'
+          wait-for-checks: 'false'
           # required-labels not provided
       
       - name: Verify failure
@@ -162,6 +163,7 @@ jobs:
           allowed-authors: 'user1'
           required-labels: 'do-not-merge'
           label-match-mode: 'none'
+          wait-for-checks: 'false'
       
       - name: Verify failure
         if: steps.none-with-labels.outcome != 'failure'

@@ -81,3 +81,15 @@ runs:
         MAX_WAIT_TIME: ${{ inputs.max-wait-time }}
         REQUIRED_CHECKS: ${{ inputs.required-checks }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
+    
+    - name: Approve Pull Request
+      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
+      shell: bash
+      run: |
+        "$ACTION_PATH/scripts/approve-pr.sh"
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        LABEL_MATCH_MODE: ${{ inputs.label-match-mode }}
