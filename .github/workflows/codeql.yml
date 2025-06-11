@@ -8,6 +8,12 @@ on:
   schedule:
     - cron: "0 0 * * *" # every day at midnight on 'main'
 
+permissions:
+  security-events: write
+  packages: read
+  actions: read
+  contents: read
+
 jobs:
   analyze-nodejs:
     name: Analyze Actions
