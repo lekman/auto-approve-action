@@ -21,6 +21,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           allowed-authors: 'user1,user2,dependabot[bot]'
+          label-match-mode: 'none'
       
       - name: Test with all valid inputs
         uses: ./
