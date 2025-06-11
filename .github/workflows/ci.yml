@@ -7,6 +7,10 @@ on:
     branches:
       - main
 
+# Note: This workflow includes many tests that intentionally fail to verify error handling.
+# Tests with "Should Fail" in their name are expected to exit with code 1.
+# These use continue-on-error: true and their failure is validated by subsequent steps.
+
 permissions:
   contents: read
   pull-requests: write
@@ -559,7 +563,7 @@ jobs:
               echo ""
               echo "| Test Suite | Status |"
               echo "|------------|--------|"
-              echo "| 🧪 Unit Tests | ${{ needs.unit-tests.result }} |"
+              echo "| 🧪 Unit Tests (includes all script tests) | ${{ needs.unit-tests.result }} |"
               echo "| 🔗 Integration Tests | ${{ needs.integration-tests.result }} |"
               echo "| 🏷️ Label Tests | ${{ needs.label-tests.result }} |"
               echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} |"
@@ -591,7 +595,7 @@ jobs:
               echo ""
               echo "| Test Suite | Status |"
               echo "|------------|--------|"
-              echo "| 🧪 Unit Tests | ${{ needs.unit-tests.result }} |"
+              echo "| 🧪 Unit Tests (includes all script tests) | ${{ needs.unit-tests.result }} |"
               echo "| 🔗 Integration Tests | ${{ needs.integration-tests.result }} |"
               echo "| 🏷️ Label Tests | ${{ needs.label-tests.result }} |"
               echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} |"
@@ -645,7 +649,7 @@ jobs:
           echo "✅ All CI checks passed successfully!"
           echo ""
           echo "Test Results Summary:"
-          echo "- Unit Tests: ${{ needs.unit-tests.result }}"
+          echo "- Unit Tests (includes all script tests): ${{ needs.unit-tests.result }}"
           echo "- Integration Tests: ${{ needs.integration-tests.result }}"
           echo "- Label Tests: ${{ needs.label-tests.result }}"
           echo "- Check Monitoring Tests: ${{ needs.check-monitoring-tests.result }}"
@@ -662,12 +666,11 @@ jobs:
             echo ""
             echo "| Test Suite | Status |"
             echo "|------------|--------|"
-            echo "| 🧪 Unit Tests | ${{ needs.unit-tests.result }} |"
+            echo "| 🧪 Unit Tests (includes all script tests) | ${{ needs.unit-tests.result }} |"
             echo "| 🔗 Integration Tests | ${{ needs.integration-tests.result }} |"
             echo "| 🏷️ Label Tests | ${{ needs.label-tests.result }} |"
             echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} |"
             echo "| 📝 Input Validation Tests (PR) | ${{ needs.input-validation-tests.result }} |"
-            echo "| 📝 Input Validation Tests (Unit) | ${{ needs.input-validation-unit-tests.result }} |"
             echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} |"
             echo ""
             echo "---"
