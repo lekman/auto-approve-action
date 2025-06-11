@@ -28,13 +28,14 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           allowed-authors: '${{ github.actor }},user1,user2,dependabot[bot]'
           label-match-mode: 'none'
+          wait-for-checks: 'false'
       
       - name: Test with all valid inputs
         uses: ./
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           allowed-authors: '${{ github.actor }},user1,user2,renovate[bot]'
-          wait-for-checks: 'true'
+          wait-for-checks: 'false'  # Disable for testing to avoid waiting for other test jobs
           max-wait-time: '60'
           required-checks: 'CI Build,Unit Tests'
           # Note: Not testing label validation here since PR may not have labels
