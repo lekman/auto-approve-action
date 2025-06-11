@@ -454,3 +454,7 @@ dist
 dist/**.* */
 temp.md
 bug.md
+
+# Temporary work files
+temp.md
+pr.md
