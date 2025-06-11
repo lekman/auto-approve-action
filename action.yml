@@ -29,6 +29,18 @@ inputs:
     description: "Comma-separated list of specific checks to wait for"
     required: false
     default: ""
+  silent:
+    description: "If true, suppress job summary output"
+    required: false
+    default: "false"
+  dry-run:
+    description: "If true, perform all checks but skip actual approval (test mode)"
+    required: false
+    default: "false"
+  merge-method:
+    description: "Method to use when auto-merging: 'merge', 'squash', or 'rebase'"
+    required: false
+    default: "merge"
 runs:
   using: "composite"
   steps:
@@ -44,6 +56,7 @@ runs:
         WAIT_FOR_CHECKS: ${{ inputs.wait-for-checks }}
         MAX_WAIT_TIME: ${{ inputs.max-wait-time }}
         REQUIRED_CHECKS: ${{ inputs.required-checks }}
+        MERGE_METHOD: ${{ inputs.merge-method }}
     
     - name: Verify PR Author
       if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
@@ -94,3 +107,6 @@ runs:
         GITHUB_ACTOR: ${{ github.actor }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
         LABEL_MATCH_MODE: ${{ inputs.label-match-mode }}
+        SILENT: ${{ inputs.silent }}
+        DRY_RUN: ${{ inputs.dry-run }}
+        MERGE_METHOD: ${{ inputs.merge-method }}

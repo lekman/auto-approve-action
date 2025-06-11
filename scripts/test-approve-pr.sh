@@ -73,6 +73,21 @@ case "$cmd" in
                                 ;;
                         esac
                     fi
+                elif [[ "$4" == "--json" ]] && [[ "$5" == "mergeable,mergeStateStatus" ]]; then
+                    # Check if using --jq flag for merge state
+                    if [[ "$6" == "--jq" ]]; then
+                        # Return mergeable status
+                        case "$MOCK_SCENARIO" in
+                            "api_failure")
+                                echo "false,UNKNOWN"
+                                ;;
+                            *)
+                                echo "true,CLEAN"
+                                ;;
+                        esac
+                    else
+                        echo '{"mergeable": true, "mergeStateStatus": "CLEAN"}'
+                    fi
                 elif [[ "$4" == "--json" ]] && [[ "$5" == "number" ]]; then
                     echo '{"number": 123}'
                 else
@@ -95,6 +110,41 @@ case "$cmd" in
                         *)
                             echo "Approved PR #$pr_num"
                             exit 0
+                            ;;
+                    esac
+                fi
+                ;;
+            "comment")
+                pr_num="$3"
+                if [[ "$4" == "--body" ]]; then
+                    case "$MOCK_SCENARIO" in
+                        "api_failure")
+                            echo "ERROR: API request failed" >&2
+                            exit 1
+                            ;;
+                        *)
+                            echo "Comment added to PR #$pr_num"
+                            exit 0
+                            ;;
+                    esac
+                fi
+                ;;
+            "merge")
+                pr_num="$3"
+                if [[ "$4" == "--enable-auto" ]]; then
+                    # Accept any merge method (--merge, --squash, --rebase)
+                    case "$5" in
+                        --merge|--squash|--rebase)
+                            case "$MOCK_SCENARIO" in
+                                "api_failure")
+                                    echo "ERROR: Failed to enable auto-merge" >&2
+                                    exit 1
+                                    ;;
+                                *)
+                                    echo "✓ Enabled auto-merge for PR #$pr_num"
+                                    exit 0
+                                    ;;
+                            esac
                             ;;
                     esac
                 fi

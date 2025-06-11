@@ -129,65 +129,108 @@ check_existing_approval() {
     return 1
 }
 
-# Function to build approval message
-build_approval_message() {
-    local pr_author="$1"
-    local matched_labels="$2"
-    local label_mode="$3"
-    local checks_total="$4"
-    local checks_passed="$5"
+# Function to add PR comment explaining the approval
+add_approval_comment() {
+    local pr_number="$1"
+    local pr_author="$2"
+    local matched_labels="$3"
+    local label_mode="$4"
+    local checks_total="$5"
+    local checks_passed="$6"
     
-    local message="## 🤖 Auto-Approval Summary\n\n"
-    message+="This pull request has been automatically approved based on the following criteria:\n\n"
+    log_info "Adding approval explanation comment to PR #$pr_number..."
+    
+    # Build the comment message
+    local comment="## 🤖 Auto-Approval\n\n"
+    comment+="This pull request meets all criteria for automatic approval:\n\n"
     
     # Author verification
-    message+="### ✅ Author Verification\n"
-    message+="- **PR Author**: @$pr_author\n"
-    message+="- **Status**: Authorized for auto-approval\n\n"
+    comment+="### ✅ Author Verification\n"
+    comment+="- **PR Author**: @$pr_author\n"
+    comment+="- **Status**: Authorized for auto-approval\n\n"
     
     # Label validation
-    message+="### ✅ Label Validation\n"
-    message+="- **Match Mode**: $label_mode\n"
+    comment+="### ✅ Label Requirements\n"
+    comment+="- **Match Mode**: $label_mode\n"
     if [[ "$label_mode" == "none" ]]; then
         if [[ -n "$matched_labels" ]]; then
-            message+="- **Status**: No excluded labels found\n"
+            comment+="- **Status**: No excluded labels found\n"
         else
-            message+="- **Status**: No labels on PR (allowed)\n"
+            comment+="- **Status**: No labels on PR (meets requirements)\n"
         fi
     else
-        message+="- **Matched Labels**: $matched_labels\n"
-        message+="- **Status**: Label requirements satisfied\n"
+        if [[ -n "$matched_labels" ]]; then
+            comment+="- **Matched Labels**: $matched_labels\n"
+        fi
+        comment+="- **Status**: Label requirements satisfied\n"
     fi
-    message+="\n"
+    comment+="\n"
     
     # Status checks
-    message+="### ✅ Status Checks\n"
-    message+="- **Total Checks**: $checks_total\n"
-    message+="- **Passed Checks**: $checks_passed\n"
-    message+="- **Status**: All required checks passed\n\n"
+    comment+="### ✅ Status Checks\n"
+    if [[ "$checks_total" -gt 0 ]]; then
+        comment+="- **Total Checks**: $checks_total\n"
+        comment+="- **Passed Checks**: $checks_passed\n"
+        comment+="- **Status**: All required checks passed\n"
+    else
+        comment+="- **Status**: No checks required or all checks passed\n"
+    fi
+    comment+="\n"
     
     # Footer
-    message+="---\n"
-    message+="*This approval was performed automatically by the Auto-Approve GitHub Action.*\n"
-    message+="*Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")*"
+    comment+="---\n"
+    comment+="*Automatically approved by the Auto-Approve GitHub Action at $(date -u +"%Y-%m-%d %H:%M:%S UTC")*"
     
-    echo "$message"
+    # Submit the comment
+    if ! result=$(gh pr comment "$pr_number" --body "$comment" 2>&1); then
+        log_error "Failed to add approval comment: $result"
+        return 1
+    fi
+    
+    log_success "Successfully added approval comment to PR #$pr_number"
+    return 0
 }
 
 # Function to approve the PR
 approve_pr() {
     local pr_number="$1"
-    local approval_message="$2"
     
     log_info "Submitting approval for PR #$pr_number..."
     
-    # Submit approval review
-    if ! result=$(gh pr review "$pr_number" --approve --body "$approval_message" 2>&1); then
+    # Submit approval review without comment
+    if ! result=$(gh pr review "$pr_number" --approve 2>&1); then
         log_error "Failed to approve PR: $result"
         return 1
     fi
     
     log_success "Successfully approved PR #$pr_number"
+    return 0
+}
+
+# Function to enable auto-merge for the PR
+enable_auto_merge() {
+    local pr_number="$1"
+    local merge_method="${2:-merge}"
+    
+    log_info "Enabling auto-merge for PR #$pr_number using $merge_method method..."
+    
+    # Validate merge method
+    case "$merge_method" in
+        merge|squash|rebase)
+            ;;
+        *)
+            log_error "Invalid merge method: $merge_method. Must be 'merge', 'squash', or 'rebase'"
+            return 1
+            ;;
+    esac
+    
+    # Enable auto-merge using the specified method
+    if ! result=$(gh pr merge "$pr_number" --enable-auto --$merge_method 2>&1); then
+        log_error "Failed to enable auto-merge: $result"
+        return 1
+    fi
+    
+    log_success "Successfully enabled auto-merge for PR #$pr_number using $merge_method method"
     return 0
 }
 
@@ -242,28 +285,76 @@ main() {
         exit 0
     fi
     
-    # Build approval message
-    local approval_message
-    approval_message=$(build_approval_message "$pr_author" "$matched_labels" "$label_mode" "$checks_total" "$checks_passed")
-    
-    # Approve the PR
-    if ! approve_pr "$pr_number" "$approval_message"; then
-        exit 1
+    # Check if running in dry-run mode
+    local auto_merge_enabled="false"
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+        log_info "DRY RUN MODE: Would enable auto-merge and approve PR #$pr_number but skipping actual actions"
+    else
+        # Enable auto-merge first
+        local merge_method="${MERGE_METHOD:-merge}"
+        if enable_auto_merge "$pr_number" "$merge_method"; then
+            auto_merge_enabled="true"
+        else
+            log_error "Failed to enable auto-merge, continuing with approval only"
+            # Don't exit - we can still approve even if auto-merge fails
+        fi
+        
+        # Approve the PR
+        if ! approve_pr "$pr_number"; then
+            exit 1
+        fi
     fi
     
-    # Add action summary
-    if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+    # Add action summary (unless silent mode is enabled)
+    if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]] && [[ "${SILENT:-false}" != "true" ]]; then
         {
-            echo "## Auto-Approval Completed"
+            if [[ "${DRY_RUN:-false}" == "true" ]]; then
+                echo "## 🤖 Auto-Approval Dry Run Completed"
+            else
+                echo "## 🤖 Auto-Approval Completed"
+            fi
             echo ""
+            echo "### Pull Request Details"
             echo "- **PR**: #$pr_number"
             echo "- **Author**: @$pr_author"
             echo "- **Timestamp**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
             echo ""
-            echo "### Approval Criteria Met"
-            echo "- ✅ Author is in allowed list"
-            echo "- ✅ Label requirements satisfied"
-            echo "- ✅ All status checks passed"
+            echo "### ✅ Author Verification"
+            echo "- **PR Author**: @$pr_author"
+            echo "- **Status**: Authorized for auto-approval"
+            echo ""
+            echo "### ✅ Label Validation"
+            echo "- **Match Mode**: $label_mode"
+            if [[ "$label_mode" == "none" ]]; then
+                if [[ -n "$matched_labels" ]]; then
+                    echo "- **Status**: No excluded labels found"
+                else
+                    echo "- **Status**: No labels on PR (allowed)"
+                fi
+            else
+                echo "- **Matched Labels**: $matched_labels"
+                echo "- **Status**: Label requirements satisfied"
+            fi
+            echo ""
+            echo "### ✅ Status Checks"
+            echo "- **Total Checks**: $checks_total"
+            echo "- **Passed Checks**: $checks_passed"
+            echo "- **Status**: All required checks passed"
+            echo ""
+            if [[ "${DRY_RUN:-false}" != "true" ]]; then
+                echo "### 🔀 Auto-Merge Status"
+                if [[ "$auto_merge_enabled" == "true" ]]; then
+                    echo "- **Status**: ✅ Auto-merge enabled (PR will merge when all checks pass)"
+                    echo "- **Method**: ${merge_method:-merge}"
+                else
+                    echo "- **Status**: ⚠️ Auto-merge not enabled (manual merge required)"
+                fi
+                echo ""
+            fi
+            echo "---"
+            if [[ "${DRY_RUN:-false}" == "true" ]]; then
+                echo "*This was a dry run. No actual approval or merge was performed.*"
+            fi
         } >> "$GITHUB_STEP_SUMMARY"
     fi
     
