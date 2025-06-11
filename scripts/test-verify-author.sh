@@ -47,7 +47,7 @@ cleanup_mock() {
     if [[ -n "${MOCK_DIR:-}" ]] && [[ -d "$MOCK_DIR" ]]; then
         rm -rf "$MOCK_DIR"
     fi
-    unset MOCK_DIR
+    unset MOCK_DIR || true
 }
 
 # Function to run a test
@@ -101,7 +101,7 @@ run_test() {
     fi
     
     # Clean up environment
-    unset ALLOWED_AUTHORS PR_NUMBER GITHUB_TOKEN
+    unset ALLOWED_AUTHORS PR_NUMBER GITHUB_TOKEN || true
     echo
 }
 
