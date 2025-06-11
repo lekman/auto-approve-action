@@ -465,7 +465,7 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           repositories: ${{ github.event.repository.name }}
       
-      # Test basic approval
+      # Test basic approval (in dry-run mode for CI)
       - name: Test Basic Approval
         uses: ./
         with:
@@ -473,6 +473,7 @@ jobs:
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'false'
+          dry-run: 'true'
       
       # Test duplicate approval prevention
       - name: Wait Before Duplicate Test
@@ -485,6 +486,7 @@ jobs:
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'false'
+          dry-run: 'true'
       
       # Test with labels
       - name: Add Test Label
@@ -530,6 +532,7 @@ jobs:
           required-labels: 'ci-test'
           label-match-mode: 'any'
           wait-for-checks: 'false'
+          dry-run: 'true'
 
   # Final check - This job is used as the single required check for branch protection
   ci-success:

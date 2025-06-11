@@ -197,15 +197,24 @@ main() {
         exit 0
     fi
     
-    # Approve the PR
-    if ! approve_pr "$pr_number"; then
-        exit 1
+    # Check if running in dry-run mode
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+        log_info "DRY RUN MODE: Would approve PR #$pr_number but skipping actual approval"
+    else
+        # Approve the PR
+        if ! approve_pr "$pr_number"; then
+            exit 1
+        fi
     fi
     
     # Add action summary (unless silent mode is enabled)
     if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]] && [[ "${SILENT:-false}" != "true" ]]; then
         {
-            echo "## 🤖 Auto-Approval Completed"
+            if [[ "${DRY_RUN:-false}" == "true" ]]; then
+                echo "## 🤖 Auto-Approval Dry Run Completed"
+            else
+                echo "## 🤖 Auto-Approval Completed"
+            fi
             echo ""
             echo "### Pull Request Details"
             echo "- **PR**: #$pr_number"
@@ -235,7 +244,11 @@ main() {
             echo "- **Status**: All required checks passed"
             echo ""
             echo "---"
-            echo "*This approval was performed automatically by the Auto-Approve GitHub Action.*"
+            if [[ "${DRY_RUN:-false}" == "true" ]]; then
+                echo "*This was a dry run. No actual approval was performed.*"
+            else
+                echo "*This approval was performed automatically by the Auto-Approve GitHub Action.*"
+            fi
         } >> "$GITHUB_STEP_SUMMARY"
     fi
     

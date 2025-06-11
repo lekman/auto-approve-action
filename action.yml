@@ -33,6 +33,10 @@ inputs:
     description: "If true, suppress job summary output"
     required: false
     default: "false"
+  dry-run:
+    description: "If true, perform all checks but skip actual approval (test mode)"
+    required: false
+    default: "false"
 runs:
   using: "composite"
   steps:
@@ -99,3 +103,4 @@ runs:
         PR_NUMBER: ${{ github.event.pull_request.number }}
         LABEL_MATCH_MODE: ${{ inputs.label-match-mode }}
         SILENT: ${{ inputs.silent }}
+        DRY_RUN: ${{ inputs.dry-run }}
