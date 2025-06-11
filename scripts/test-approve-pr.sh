@@ -99,6 +99,21 @@ case "$cmd" in
                     esac
                 fi
                 ;;
+            "comment")
+                pr_num="$3"
+                if [[ "$4" == "--body" ]]; then
+                    case "$MOCK_SCENARIO" in
+                        "api_failure")
+                            echo "ERROR: API request failed" >&2
+                            exit 1
+                            ;;
+                        *)
+                            echo "Comment added to PR #$pr_num"
+                            exit 0
+                            ;;
+                    esac
+                fi
+                ;;
         esac
         ;;
     "api")

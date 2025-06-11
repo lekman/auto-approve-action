@@ -129,6 +129,67 @@ check_existing_approval() {
     return 1
 }
 
+# Function to add PR comment explaining the approval
+add_approval_comment() {
+    local pr_number="$1"
+    local pr_author="$2"
+    local matched_labels="$3"
+    local label_mode="$4"
+    local checks_total="$5"
+    local checks_passed="$6"
+    
+    log_info "Adding approval explanation comment to PR #$pr_number..."
+    
+    # Build the comment message
+    local comment="## 🤖 Auto-Approval\n\n"
+    comment+="This pull request meets all criteria for automatic approval:\n\n"
+    
+    # Author verification
+    comment+="### ✅ Author Verification\n"
+    comment+="- **PR Author**: @$pr_author\n"
+    comment+="- **Status**: Authorized for auto-approval\n\n"
+    
+    # Label validation
+    comment+="### ✅ Label Requirements\n"
+    comment+="- **Match Mode**: $label_mode\n"
+    if [[ "$label_mode" == "none" ]]; then
+        if [[ -n "$matched_labels" ]]; then
+            comment+="- **Status**: No excluded labels found\n"
+        else
+            comment+="- **Status**: No labels on PR (meets requirements)\n"
+        fi
+    else
+        if [[ -n "$matched_labels" ]]; then
+            comment+="- **Matched Labels**: $matched_labels\n"
+        fi
+        comment+="- **Status**: Label requirements satisfied\n"
+    fi
+    comment+="\n"
+    
+    # Status checks
+    comment+="### ✅ Status Checks\n"
+    if [[ "$checks_total" -gt 0 ]]; then
+        comment+="- **Total Checks**: $checks_total\n"
+        comment+="- **Passed Checks**: $checks_passed\n"
+        comment+="- **Status**: All required checks passed\n"
+    else
+        comment+="- **Status**: No checks required or all checks passed\n"
+    fi
+    comment+="\n"
+    
+    # Footer
+    comment+="---\n"
+    comment+="*Automatically approved by the Auto-Approve GitHub Action at $(date -u +"%Y-%m-%d %H:%M:%S UTC")*"
+    
+    # Submit the comment
+    if ! result=$(gh pr comment "$pr_number" --body "$comment" 2>&1); then
+        log_error "Failed to add approval comment: $result"
+        return 1
+    fi
+    
+    log_success "Successfully added approval comment to PR #$pr_number"
+    return 0
+}
 
 # Function to approve the PR
 approve_pr() {
@@ -199,8 +260,14 @@ main() {
     
     # Check if running in dry-run mode
     if [[ "${DRY_RUN:-false}" == "true" ]]; then
-        log_info "DRY RUN MODE: Would approve PR #$pr_number but skipping actual approval"
+        log_info "DRY RUN MODE: Would add comment and approve PR #$pr_number but skipping actual actions"
     else
+        # Add comment explaining the approval
+        if ! add_approval_comment "$pr_number" "$pr_author" "$matched_labels" "$label_mode" "$checks_total" "$checks_passed"; then
+            log_error "Failed to add approval comment, aborting approval"
+            exit 1
+        fi
+        
         # Approve the PR
         if ! approve_pr "$pr_number"; then
             exit 1
