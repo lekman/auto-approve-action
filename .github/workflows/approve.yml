@@ -18,10 +18,25 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Auto Approve PR
+        id: auto-approve
+        continue-on-error: true
         uses: ./
         with:
           github-token: ${{ secrets.CODE_OWNER_TOKEN }}
           allowed-authors: "Lekman-Release-Please-Bot[bot]"
           required-labels: "autorelease: pending"
           label-match-mode: "all"
-          wait-for-checks: true 
+          wait-for-checks: true
+          max-wait-time: "10"
+          
+      - name: Check approval result
+        if: always()
+        run: |
+          if [[ "${{ steps.auto-approve.outcome }}" == "success" ]]; then
+            echo "✅ PR was successfully auto-approved"
+          elif [[ "${{ steps.auto-approve.outcome }}" == "failure" ]]; then
+            echo "❌ PR was not auto-approved (expected if checks are failing or criteria not met)"
+            echo "This is normal if:"
+            echo "- Other checks are still running or failing"
+            echo "- The PR doesn't meet all approval criteria"
+          fi 

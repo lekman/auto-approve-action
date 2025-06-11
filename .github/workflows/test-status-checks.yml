@@ -95,6 +95,7 @@ jobs:
           label-match-mode: 'none'
           wait-for-checks: 'true'
           max-wait-time: '5'
+          required-checks: 'Test Check'  # Only wait for the specific check we created
 
   test-timeout-scenario:
     name: Test Timeout Scenario
