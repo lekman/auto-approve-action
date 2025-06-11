@@ -1,0 +1,14 @@
+name: Auto Approve PR
+description: Auto-approve PRs based on allow list, label requirements, and status check verification
+inputs:
+  github-token:
+    description: "GitHub token with repo and PR write permissions"
+    required: true
+    default: ""
+runs:
+  using: "composite"
+  steps:
+    - name: Placeholder
+      shell: bash
+      run: |
+        echo "Hello, world!"
