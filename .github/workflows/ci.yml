@@ -3,14 +3,13 @@ name: Continuous Integration
 on:
   workflow_dispatch:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types:
+      - opened
+      - synchronize
+      - reopened
   push:
     branches:
       - main
-    paths:
-      - 'scripts/**'
-      - 'action.yml'
-      - '.github/workflows/ci.yml'
 
 permissions:
   contents: read
@@ -546,6 +545,28 @@ jobs:
                [[ "${{ needs.check-monitoring-tests.result }}" != "success" ]] || \
                [[ "${{ needs.approval-tests.result }}" != "success" ]]; then
               echo "❌ PR-specific tests did not complete successfully"
+              
+              # Write PR test failure summary
+              {
+                echo "## ❌ PR Tests Incomplete"
+                echo ""
+                echo "Pull request specific tests did not complete successfully."
+                echo ""
+                echo "### PR Test Results"
+                echo ""
+                echo "| Test Suite | Status | Required |"
+                echo "|------------|--------|----------|"
+                echo "| 🔗 Integration Tests | ${{ needs.integration-tests.result }} | ✅ |"
+                echo "| 🏷️ Label Tests | ${{ needs.label-tests.result }} | ✅ |"
+                echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} | ✅ |"
+                echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} | ✅ |"
+                echo ""
+                echo "All PR-specific tests must pass for the CI check to succeed."
+                echo ""
+                echo "---"
+                echo "_Generated at $(date -u +"%Y-%m-%d %H:%M:%S UTC")_"
+              } >> $GITHUB_STEP_SUMMARY
+              
               exit 1
             fi
           fi
