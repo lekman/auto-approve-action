@@ -58,14 +58,14 @@ run_test() {
         else
             echo -e "${GREEN}✓ Test passed${NC}"
         fi
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED + 1))
     else
         if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
             echo "✗ Test failed (expected: $expected_result, got: $actual_result)"
         else
             echo -e "${RED}✗ Test failed (expected: $expected_result, got: $actual_result)${NC}"
         fi
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED + 1))
     fi
     
     # Clean up environment
