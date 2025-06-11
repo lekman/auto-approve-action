@@ -127,11 +127,8 @@ if [[ "$LABEL_MATCH_MODE" != "none" && -z "${REQUIRED_LABELS:-}" ]]; then
     exit 1
 fi
 
-# Additional validation: if label-match-mode is 'none', required-labels should not be provided
-if [[ "$LABEL_MATCH_MODE" == "none" && -n "${REQUIRED_LABELS:-}" ]]; then
-    log_error "When 'label-match-mode' is 'none', 'required-labels' should not be provided"
-    exit 1
-fi
+# Note: When label-match-mode is 'none', required-labels can be provided to specify
+# which labels should NOT be present on the PR (excluded labels)
 
 log_info "✅ All input validations passed successfully!"
 
