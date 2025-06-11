@@ -18,10 +18,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Auto Approve PR
-        uses: lekman/auto-approve-action@main
+        uses: ./
         with:
           github-token: ${{ secrets.CODE_OWNER_TOKEN }}
-          allowed-authors: "lekman"
+          allowed-authors: "Lekman-Release-Please-Bot[bot]"
           required-labels: "autorelease: pending"
           label-match-mode: "all"
           wait-for-checks: true 
