@@ -4,15 +4,9 @@
 
 set -euo pipefail
 
-# Function to log errors using GitHub Actions error format
-log_error() {
-    echo "::error::$1"
-}
-
-# Function to log info
-log_info() {
-    echo "ℹ️  $1"
-}
+# Source the common logging library
+SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SOURCE_DIR/lib/logging.sh"
 
 # Function to validate boolean values
 is_boolean() {
@@ -53,7 +47,9 @@ is_valid_csv_list() {
 }
 
 # Start validation
-log_info "Starting input validation..."
+log_step_start "Input Validation"
+add_to_summary "### Validation Results"
+add_to_summary ""
 
 # Validate allowed-authors (required)
 if [[ -z "${ALLOWED_AUTHORS:-}" ]]; then
@@ -143,6 +139,19 @@ case "$MERGE_METHOD" in
 esac
 
 log_info "✅ All input validations passed successfully!"
+
+# Add validation summary
+add_to_summary "| Parameter | Value | Status |"
+add_to_summary "|-----------|-------|--------|"
+add_to_summary "| allowed-authors | $ALLOWED_AUTHORS | ✅ Valid |"
+add_to_summary "| required-labels | ${REQUIRED_LABELS:-_(not provided)_} | ✅ Valid |"
+add_to_summary "| label-match-mode | $LABEL_MATCH_MODE | ✅ Valid |"
+add_to_summary "| wait-for-checks | $WAIT_FOR_CHECKS | ✅ Valid |"
+add_to_summary "| max-wait-time | $MAX_WAIT_TIME minutes | ✅ Valid |"
+add_to_summary "| required-checks | ${REQUIRED_CHECKS:-_(not provided)_} | ✅ Valid |"
+add_to_summary "| merge-method | ${MERGE_METHOD:-merge} | ✅ Valid |"
+
+log_step_end "Input Validation" "success"
 
 # Export validated inputs for use by other scripts
 export VALIDATED_ALLOWED_AUTHORS="$ALLOWED_AUTHORS"

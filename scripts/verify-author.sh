@@ -4,20 +4,9 @@
 
 set -euo pipefail
 
-# Function to log errors using GitHub Actions error format
-log_error() {
-    echo "::error::$1"
-}
-
-# Function to log info
-log_info() {
-    echo "ℹ️  $1"
-}
-
-# Function to log success
-log_success() {
-    echo "✅ $1"
-}
+# Source the common logging library
+SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SOURCE_DIR/lib/logging.sh"
 
 # Function to retrieve PR author
 get_pr_author() {
@@ -102,8 +91,14 @@ main() {
         exit 1
     fi
     
+    log_step_start "Author Verification"
     log_info "Verifying author for PR #$pr_number"
     log_info "Allowed authors: $ALLOWED_AUTHORS"
+    
+    add_to_summary "### Verification Details"
+    add_to_summary ""
+    add_to_summary "- **PR Number**: #$pr_number"
+    add_to_summary "- **Allowed Authors**: $ALLOWED_AUTHORS"
     
     # Get PR author
     local pr_author
@@ -112,10 +107,13 @@ main() {
     fi
     
     log_info "PR author: $pr_author"
+    add_to_summary "- **PR Author**: @$pr_author"
     
     # Check if author is allowed
     if is_author_allowed "$pr_author" "$ALLOWED_AUTHORS"; then
         log_success "Author '$pr_author' is authorized to trigger auto-approval"
+        add_to_summary "- **Verification Result**: ✅ Authorized"
+        log_step_end "Author Verification" "success"
         
         # Export for use by other scripts
         export VALIDATED_PR_AUTHOR="$pr_author"
@@ -131,6 +129,8 @@ main() {
     else
         log_error "Author '$pr_author' is not in the allowed authors list"
         log_info "Auto-approval is only available for: $ALLOWED_AUTHORS"
+        add_to_summary "- **Verification Result**: ❌ Not Authorized"
+        log_step_end "Author Verification" "failure"
         exit 1
     fi
 }

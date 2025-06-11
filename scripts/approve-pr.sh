@@ -4,20 +4,9 @@
 
 set -euo pipefail
 
-# Function to log errors using GitHub Actions error format
-log_error() {
-    echo "::error::$1"
-}
-
-# Function to log info
-log_info() {
-    echo "ℹ️  $1"
-}
-
-# Function to log success
-log_success() {
-    echo "✅ $1"
-}
+# Source the common logging library
+SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SOURCE_DIR/lib/logging.sh"
 
 # Function to verify GitHub token permissions
 verify_token_permissions() {
