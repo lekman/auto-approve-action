@@ -76,7 +76,6 @@
     "**/typedoc.json": true,
     "node_modules": true,
     "package-lock.json": true,
-    "scripts": true,
     "taskfile.yml": true,
     "tasks": true,
     "**/vite**.*": true,
