@@ -40,7 +40,7 @@ Key features include:
            uses: actions/checkout@v4
    
          - name: Auto Approve PR
-           uses: lekman/auto-approve-action@v1
+           uses: lekman/auto-approve-action@main
            with:
              github-token: ${{ secrets.CODE_OWNER_TOKEN }}
              allowed-authors: "dependabot[bot], renovate[bot], trusted-dev"

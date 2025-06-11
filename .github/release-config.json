@@ -4,5 +4,10 @@
   "include-v-in-tag": true,
   "tag-separator": "@",
   "separate-pull-requests": false,
-  "release-type": "simple"
+  "release-type": "simple",
+  "packages": {
+    ".": {
+      "package-name": "auto-approve-action"
+    }
+  }
 }
