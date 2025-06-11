@@ -25,7 +25,6 @@ jobs:
       - name: Generate GitHub App token
         id: app-token
         uses: peter-evans/create-github-app-token@v2
-        if: ${{ secrets.APP_ID != '' }}
         continue-on-error: true
         with:
           app-id: ${{ secrets.APP_ID }}
