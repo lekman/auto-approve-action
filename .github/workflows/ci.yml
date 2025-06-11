@@ -1,0 +1,470 @@
+name: Continuous Integration
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/**'
+      - 'action.yml'
+      - '.github/workflows/ci.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  issues: write
+
+jobs:
+  # Unit Tests - Run all script unit tests
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test:
+          - { name: "Input Validation", script: "./scripts/test-validate-inputs.sh" }
+          - { name: "Author Verification", script: "./scripts/test-verify-author.sh" }
+          - { name: "Label Validation", script: "./scripts/test-validate-labels.sh" }
+          - { name: "Status Check Monitor", script: "./scripts/test-monitor-checks.sh" }
+          - { name: "Approval Execution", script: "./scripts/test-approve-pr.sh" }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+      
+      - name: Run ${{ matrix.test.name }} Tests
+        run: ${{ matrix.test.script }}
+
+  # Integration Tests - Test the action in PR context
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Generate GitHub App token (if available)
+        id: app-token
+        uses: peter-evans/create-github-app-token@v2
+        if: ${{ secrets.APP_ID != '' }}
+        continue-on-error: true
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      
+      # Test basic approval without checks
+      - name: Test Basic Approval (No Checks)
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+      
+      # Test author verification
+      - name: Test Unauthorized Author (Should Fail)
+        id: test-unauthorized
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          allowed-authors: 'definitely-not-the-pr-author'
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+      
+      - name: Verify Unauthorized Test Failed
+        if: steps.test-unauthorized.outcome != 'failure'
+        run: |
+          echo "Expected unauthorized author test to fail"
+          exit 1
+      
+      # Test with bot authors
+      - name: Test Bot Author Pattern
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          allowed-authors: '${{ github.actor }},dependabot[bot],renovate[bot]'
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+      
+      # Test with multiple authors
+      - name: Test Multiple Authors
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          allowed-authors: 'user1,user2,${{ github.actor }},user3'
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+
+  # Label validation tests
+  label-tests:
+    name: Label Validation Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Generate GitHub App token (if available)
+        id: app-token
+        uses: peter-evans/create-github-app-token@v2
+        if: ${{ secrets.APP_ID != '' }}
+        continue-on-error: true
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      
+      # Test mode 'none'
+      - name: Test Label Mode None
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          required-labels: 'do-not-merge,wip,blocked'
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+      
+      # Test empty label validation
+      - name: Test Empty Labels with Mode Any (Should Fail)
+        id: test-empty-any
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'any'
+          wait-for-checks: 'false'
+      
+      - name: Verify Empty Label Test Failed
+        if: steps.test-empty-any.outcome != 'failure'
+        run: |
+          echo "Expected validation to fail when mode is 'any' but no labels specified"
+          exit 1
+      
+      # Test mode 'all' without all labels
+      - name: Test Label Mode All (Should Fail)
+        id: test-all-fail
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          required-labels: 'test-label,approved,ready'
+          label-match-mode: 'all'
+          wait-for-checks: 'false'
+      
+      - name: Verify Mode All Failed
+        if: steps.test-all-fail.outcome != 'failure'
+        run: |
+          echo "Expected mode 'all' to fail when not all labels are present"
+          exit 1
+
+  # Status check monitoring tests
+  check-monitoring-tests:
+    name: Status Check Monitoring Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Generate GitHub App token (if available)
+        id: app-token
+        uses: peter-evans/create-github-app-token@v2
+        if: ${{ secrets.APP_ID != '' }}
+        continue-on-error: true
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      
+      # Test with checks disabled
+      - name: Test with Check Waiting Disabled
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+      
+      # Create and wait for a specific check
+      - name: Create Test Check
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            
+            const { data: check } = await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'CI Test Check',
+              head_sha: pr.head.sha,
+              status: 'in_progress'
+            });
+            
+            // Complete it after a short delay
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            await github.rest.checks.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              check_run_id: check.id,
+              status: 'completed',
+              conclusion: 'success'
+            });
+      
+      - name: Test Waiting for Specific Check
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'true'
+          max-wait-time: '5'
+          required-checks: 'CI Test Check'
+      
+      # Test timeout scenario
+      - name: Test Timeout (Should Fail)
+        id: test-timeout
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'true'
+          max-wait-time: '0.1'
+          required-checks: 'Non-Existent-Check'
+      
+      - name: Verify Timeout Occurred
+        if: steps.test-timeout.outcome != 'failure'
+        run: |
+          echo "Expected timeout test to fail"
+          exit 1
+      
+      # Test failed check rejection
+      - name: Create Failing Check
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            
+            await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'CI Failed Check',
+              head_sha: pr.head.sha,
+              status: 'completed',
+              conclusion: 'failure'
+            });
+      
+      - name: Test Failed Check Rejection (Should Fail)
+        id: test-failed-check
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'true'
+          max-wait-time: '1'
+          required-checks: 'CI Failed Check'
+      
+      - name: Verify Failed Check Rejection
+        if: steps.test-failed-check.outcome != 'failure'
+        run: |
+          echo "Expected action to fail due to failed check"
+          exit 1
+
+  # Input validation tests
+  input-validation-tests:
+    name: Input Validation Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      # Test valid inputs
+      - name: Test Minimal Valid Inputs
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-authors: 'user1,user2,dependabot[bot]'
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+      
+      - name: Test All Valid Inputs
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-authors: 'user1,user2,renovate[bot]'
+          wait-for-checks: 'false'
+          max-wait-time: '60'
+          required-checks: 'CI Build,Unit Tests'
+          label-match-mode: 'none'
+      
+      # Test invalid inputs
+      - name: Test Missing Allowed Authors (Should Fail)
+        id: test-missing-authors
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Verify Missing Authors Failed
+        if: steps.test-missing-authors.outcome != 'failure'
+        run: exit 1
+      
+      - name: Test Invalid Label Match Mode (Should Fail)
+        id: test-invalid-mode
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-authors: 'user1'
+          label-match-mode: 'invalid'
+      
+      - name: Verify Invalid Mode Failed
+        if: steps.test-invalid-mode.outcome != 'failure'
+        run: exit 1
+      
+      - name: Test Invalid Wait For Checks (Should Fail)
+        id: test-invalid-wait
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-authors: 'user1'
+          wait-for-checks: 'yes'
+      
+      - name: Verify Invalid Wait Failed
+        if: steps.test-invalid-wait.outcome != 'failure'
+        run: exit 1
+      
+      - name: Test Negative Max Wait Time (Should Fail)
+        id: test-negative-time
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-authors: 'user1'
+          max-wait-time: '-5'
+      
+      - name: Verify Negative Time Failed
+        if: steps.test-negative-time.outcome != 'failure'
+        run: exit 1
+      
+      - name: Test Excessive Max Wait Time (Should Fail)
+        id: test-excessive-time
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-authors: 'user1'
+          max-wait-time: '500'
+      
+      - name: Verify Excessive Time Failed
+        if: steps.test-excessive-time.outcome != 'failure'
+        run: exit 1
+
+  # Approval execution tests
+  approval-tests:
+    name: Approval Execution Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Generate GitHub App token (if available)
+        id: app-token
+        uses: peter-evans/create-github-app-token@v2
+        if: ${{ secrets.APP_ID != '' }}
+        continue-on-error: true
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      
+      # Test basic approval
+      - name: Test Basic Approval
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+      
+      # Test duplicate approval prevention
+      - name: Wait Before Duplicate Test
+        run: sleep 2
+      
+      - name: Test Duplicate Approval (Should Skip)
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+      
+      # Test with labels
+      - name: Add Test Label
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          script: |
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: ['ci-test']
+              });
+              console.log('Successfully added ci-test label');
+            } catch (error) {
+              console.log('Could not add label:', error.message);
+              try {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: 'ci-test',
+                  color: '0969da',
+                  description: 'CI test label'
+                });
+                console.log('Created label, retrying...');
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  labels: ['ci-test']
+                });
+              } catch (retryError) {
+                console.log('Failed to add label after creating:', retryError.message);
+              }
+            }
+      
+      - name: Test Approval with Label
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          required-labels: 'ci-test'
+          label-match-mode: 'any'
+          wait-for-checks: 'false'
