@@ -1,0 +1,26 @@
+name: "CodeQL config"
+disable-default-queries: true
+queries:
+  - name: Use security-extended query suite
+    uses: security-extended
+paths-ignore:
+  # JavaScript
+  - "node_modules"
+  - "dist"
+  - "**/dist"
+  - "evidence"
+  - "**/*.test.js"
+  - "**/*.test.ts"
+  # JavaScript Frameworks/Libraries
+  - "**/bootstrap.js"
+  - "**/boostrap.min.js"
+  - "**/jquery-*.js"
+query-filters:
+  - exclude:
+      id:
+        - js/actions/unpinned-tag
+      tags:
+        - /cwe/-029/
+      problems.severity:
+        - warning
+        - recommendation
