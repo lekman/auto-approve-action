@@ -129,60 +129,15 @@ check_existing_approval() {
     return 1
 }
 
-# Function to build approval message
-build_approval_message() {
-    local pr_author="$1"
-    local matched_labels="$2"
-    local label_mode="$3"
-    local checks_total="$4"
-    local checks_passed="$5"
-    
-    local message="## 🤖 Auto-Approval Summary\n\n"
-    message+="This pull request has been automatically approved based on the following criteria:\n\n"
-    
-    # Author verification
-    message+="### ✅ Author Verification\n"
-    message+="- **PR Author**: @$pr_author\n"
-    message+="- **Status**: Authorized for auto-approval\n\n"
-    
-    # Label validation
-    message+="### ✅ Label Validation\n"
-    message+="- **Match Mode**: $label_mode\n"
-    if [[ "$label_mode" == "none" ]]; then
-        if [[ -n "$matched_labels" ]]; then
-            message+="- **Status**: No excluded labels found\n"
-        else
-            message+="- **Status**: No labels on PR (allowed)\n"
-        fi
-    else
-        message+="- **Matched Labels**: $matched_labels\n"
-        message+="- **Status**: Label requirements satisfied\n"
-    fi
-    message+="\n"
-    
-    # Status checks
-    message+="### ✅ Status Checks\n"
-    message+="- **Total Checks**: $checks_total\n"
-    message+="- **Passed Checks**: $checks_passed\n"
-    message+="- **Status**: All required checks passed\n\n"
-    
-    # Footer
-    message+="---\n"
-    message+="*This approval was performed automatically by the Auto-Approve GitHub Action.*\n"
-    message+="*Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")*"
-    
-    echo "$message"
-}
 
 # Function to approve the PR
 approve_pr() {
     local pr_number="$1"
-    local approval_message="$2"
     
     log_info "Submitting approval for PR #$pr_number..."
     
-    # Submit approval review
-    if ! result=$(gh pr review "$pr_number" --approve --body "$approval_message" 2>&1); then
+    # Submit approval review without comment
+    if ! result=$(gh pr review "$pr_number" --approve 2>&1); then
         log_error "Failed to approve PR: $result"
         return 1
     fi
@@ -242,28 +197,45 @@ main() {
         exit 0
     fi
     
-    # Build approval message
-    local approval_message
-    approval_message=$(build_approval_message "$pr_author" "$matched_labels" "$label_mode" "$checks_total" "$checks_passed")
-    
     # Approve the PR
-    if ! approve_pr "$pr_number" "$approval_message"; then
+    if ! approve_pr "$pr_number"; then
         exit 1
     fi
     
-    # Add action summary
-    if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+    # Add action summary (unless silent mode is enabled)
+    if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]] && [[ "${SILENT:-false}" != "true" ]]; then
         {
-            echo "## Auto-Approval Completed"
+            echo "## 🤖 Auto-Approval Completed"
             echo ""
+            echo "### Pull Request Details"
             echo "- **PR**: #$pr_number"
             echo "- **Author**: @$pr_author"
             echo "- **Timestamp**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
             echo ""
-            echo "### Approval Criteria Met"
-            echo "- ✅ Author is in allowed list"
-            echo "- ✅ Label requirements satisfied"
-            echo "- ✅ All status checks passed"
+            echo "### ✅ Author Verification"
+            echo "- **PR Author**: @$pr_author"
+            echo "- **Status**: Authorized for auto-approval"
+            echo ""
+            echo "### ✅ Label Validation"
+            echo "- **Match Mode**: $label_mode"
+            if [[ "$label_mode" == "none" ]]; then
+                if [[ -n "$matched_labels" ]]; then
+                    echo "- **Status**: No excluded labels found"
+                else
+                    echo "- **Status**: No labels on PR (allowed)"
+                fi
+            else
+                echo "- **Matched Labels**: $matched_labels"
+                echo "- **Status**: Label requirements satisfied"
+            fi
+            echo ""
+            echo "### ✅ Status Checks"
+            echo "- **Total Checks**: $checks_total"
+            echo "- **Passed Checks**: $checks_passed"
+            echo "- **Status**: All required checks passed"
+            echo ""
+            echo "---"
+            echo "*This approval was performed automatically by the Auto-Approve GitHub Action.*"
         } >> "$GITHUB_STEP_SUMMARY"
     fi
     

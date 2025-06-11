@@ -29,6 +29,10 @@ inputs:
     description: "Comma-separated list of specific checks to wait for"
     required: false
     default: ""
+  silent:
+    description: "If true, suppress job summary output"
+    required: false
+    default: "false"
 runs:
   using: "composite"
   steps:
@@ -94,3 +98,4 @@ runs:
         GITHUB_ACTOR: ${{ github.actor }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
         LABEL_MATCH_MODE: ${{ inputs.label-match-mode }}
+        SILENT: ${{ inputs.silent }}
