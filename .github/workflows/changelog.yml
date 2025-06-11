@@ -1,0 +1,52 @@
+name: "Generate Changelog"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+  actions: write
+  checks: write
+
+jobs:
+  release:
+    name: "Release Please"
+    runs-on: ubuntu-latest
+    # Only on default branch
+    if: ${{ github.ref == 'refs/heads/main' }}
+    permissions:
+      contents: write
+      pull-requests: write
+      packages: write
+      actions: write
+      checks: write
+    outputs:
+      json: ${{ steps.show-outputs.outputs.json }}
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: "Release Please"
+        uses: googleapis/release-please-action@v4
+        if: github.ref == 'refs/heads/main'
+        id: release
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+          target-branch: ${{ github.ref_name}}
+          config-file: .github/release-config.json
+          manifest-file: .github/release-manifest.json
+
+      - name: Show the outputs
+        if: github.ref == 'refs/heads/main'
+        id: show-outputs
+        run: |
+          output_json=$(echo '${{ toJson(steps.release.outputs) }}' | jq .)
+          echo $output_json
+          output_no_newlines=$(echo "$output_json" | tr -d '\n')
+          echo "json=$output_no_newlines" >> $GITHUB_OUTPUT
