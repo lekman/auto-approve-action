@@ -34,11 +34,11 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           allowed-authors: '${{ github.actor }},user1,user2,renovate[bot]'
-          required-labels: 'approved,ready'
-          label-match-mode: 'all'
           wait-for-checks: 'true'
           max-wait-time: '60'
           required-checks: 'CI Build,Unit Tests'
+          # Note: Not testing label validation here since PR may not have labels
+          label-match-mode: 'none'
 
   test-invalid-allowed-authors:
     name: Test Invalid Allowed Authors

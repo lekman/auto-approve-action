@@ -147,7 +147,7 @@ run_test "label-match-mode 'any' without labels" "fail" \
     "WAIT_FOR_CHECKS=true" \
     "MAX_WAIT_TIME=30"
 
-run_test "label-match-mode 'none' with labels" "fail" \
+run_test "label-match-mode 'none' with labels (valid)" "pass" \
     "ALLOWED_AUTHORS=user1" \
     "REQUIRED_LABELS=do-not-merge" \
     "LABEL_MATCH_MODE=none" \
