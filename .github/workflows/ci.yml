@@ -40,6 +40,8 @@ jobs:
       
       - name: Install dependencies
         run: |
+          # Add small random delay to avoid parallel apt conflicts
+          sleep $((RANDOM % 3))
           sudo apt-get update
           sudo apt-get install -y jq
       

@@ -193,7 +193,9 @@ main() {
     
     # Make available for subsequent steps via GITHUB_ENV
     if [[ -n "${GITHUB_ENV:-}" ]]; then
-        echo "VALIDATED_LABELS=$pr_labels" >> "$GITHUB_ENV"
+        # Convert newline-separated labels to comma-separated for GITHUB_ENV
+        local labels_csv=$(echo "$pr_labels" | tr '\n' ',' | sed 's/,$//')
+        echo "VALIDATED_LABELS=$labels_csv" >> "$GITHUB_ENV"
         echo "LABEL_MATCH_MODE=$LABEL_MATCH_MODE" >> "$GITHUB_ENV"
     fi
     

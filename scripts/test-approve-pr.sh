@@ -267,6 +267,8 @@ run_test "Missing PR number" "success" "fail" '
     unset PR_NUMBER
     export GITHUB_REF="refs/heads/main"
     export VALIDATED_PR_AUTHOR="testuser"
+    # Also unset GITHUB_EVENT_PATH to ensure no PR number can be found
+    unset GITHUB_EVENT_PATH
 '
 
 # Summary
