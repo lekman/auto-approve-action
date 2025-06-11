@@ -5,10 +5,42 @@ inputs:
     description: "GitHub token with repo and PR write permissions"
     required: true
     default: ""
+  allowed-authors:
+    description: "Comma-separated list of GitHub usernames authorized to trigger auto-approval"
+    required: true
+    default: ""
+  required-labels:
+    description: "Comma-separated list of labels to validate against the PR"
+    required: false
+    default: ""
+  label-match-mode:
+    description: "Label matching mode: 'all', 'any', or 'none'"
+    required: false
+    default: "all"
+  wait-for-checks:
+    description: "Whether to wait for status checks to complete before approval"
+    required: false
+    default: "true"
+  max-wait-time:
+    description: "Maximum time in minutes to wait for checks to complete"
+    required: false
+    default: "30"
+  required-checks:
+    description: "Comma-separated list of specific checks to wait for"
+    required: false
+    default: ""
 runs:
   using: "composite"
   steps:
-    - name: Placeholder
+    - name: Validate Inputs
       shell: bash
       run: |
-        echo "Hello, world!"
+        "$ACTION_PATH/scripts/validate-inputs.sh"
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        ALLOWED_AUTHORS: ${{ inputs.allowed-authors }}
+        REQUIRED_LABELS: ${{ inputs.required-labels }}
+        LABEL_MATCH_MODE: ${{ inputs.label-match-mode }}
+        WAIT_FOR_CHECKS: ${{ inputs.wait-for-checks }}
+        MAX_WAIT_TIME: ${{ inputs.max-wait-time }}
+        REQUIRED_CHECKS: ${{ inputs.required-checks }}
