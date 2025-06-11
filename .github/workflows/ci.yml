@@ -24,7 +24,7 @@ jobs:
     steps:
       - name: Generate GitHub App token
         id: app-token
-        if: ${{ vars.APP_ID != '' && secrets.APP_PRIVATE_KEY != '' }}
+        if: ${{ vars.APP_ID != '' }}
         uses: actions/create-github-app-token@v1
         continue-on-error: true
         with:
