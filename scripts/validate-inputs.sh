@@ -130,6 +130,18 @@ fi
 # Note: When label-match-mode is 'none', required-labels can be provided to specify
 # which labels should NOT be present on the PR (excluded labels)
 
+# Validate merge-method (optional)
+MERGE_METHOD="${MERGE_METHOD:-merge}"
+case "$MERGE_METHOD" in
+    merge|squash|rebase)
+        log_info "✓ merge-method: Valid ($MERGE_METHOD)"
+        ;;
+    *)
+        log_error "Input 'merge-method' must be one of: merge, squash, rebase (got: $MERGE_METHOD)"
+        exit 1
+        ;;
+esac
+
 log_info "✅ All input validations passed successfully!"
 
 # Export validated inputs for use by other scripts

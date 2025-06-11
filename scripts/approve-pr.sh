@@ -207,6 +207,33 @@ approve_pr() {
     return 0
 }
 
+# Function to enable auto-merge for the PR
+enable_auto_merge() {
+    local pr_number="$1"
+    local merge_method="${2:-merge}"
+    
+    log_info "Enabling auto-merge for PR #$pr_number using $merge_method method..."
+    
+    # Validate merge method
+    case "$merge_method" in
+        merge|squash|rebase)
+            ;;
+        *)
+            log_error "Invalid merge method: $merge_method. Must be 'merge', 'squash', or 'rebase'"
+            return 1
+            ;;
+    esac
+    
+    # Enable auto-merge using the specified method
+    if ! result=$(gh pr merge "$pr_number" --enable-auto --$merge_method 2>&1); then
+        log_error "Failed to enable auto-merge: $result"
+        return 1
+    fi
+    
+    log_success "Successfully enabled auto-merge for PR #$pr_number using $merge_method method"
+    return 0
+}
+
 # Main execution
 main() {
     # Check required environment variables
@@ -259,13 +286,17 @@ main() {
     fi
     
     # Check if running in dry-run mode
+    local auto_merge_enabled="false"
     if [[ "${DRY_RUN:-false}" == "true" ]]; then
-        log_info "DRY RUN MODE: Would add comment and approve PR #$pr_number but skipping actual actions"
+        log_info "DRY RUN MODE: Would enable auto-merge and approve PR #$pr_number but skipping actual actions"
     else
-        # Add comment explaining the approval
-        if ! add_approval_comment "$pr_number" "$pr_author" "$matched_labels" "$label_mode" "$checks_total" "$checks_passed"; then
-            log_error "Failed to add approval comment, aborting approval"
-            exit 1
+        # Enable auto-merge first
+        local merge_method="${MERGE_METHOD:-merge}"
+        if enable_auto_merge "$pr_number" "$merge_method"; then
+            auto_merge_enabled="true"
+        else
+            log_error "Failed to enable auto-merge, continuing with approval only"
+            # Don't exit - we can still approve even if auto-merge fails
         fi
         
         # Approve the PR
@@ -310,9 +341,19 @@ main() {
             echo "- **Passed Checks**: $checks_passed"
             echo "- **Status**: All required checks passed"
             echo ""
+            if [[ "${DRY_RUN:-false}" != "true" ]]; then
+                echo "### 🔀 Auto-Merge Status"
+                if [[ "$auto_merge_enabled" == "true" ]]; then
+                    echo "- **Status**: ✅ Auto-merge enabled (PR will merge when all checks pass)"
+                    echo "- **Method**: ${merge_method:-merge}"
+                else
+                    echo "- **Status**: ⚠️ Auto-merge not enabled (manual merge required)"
+                fi
+                echo ""
+            fi
             echo "---"
             if [[ "${DRY_RUN:-false}" == "true" ]]; then
-                echo "*This was a dry run. No actual approval was performed.*"
+                echo "*This was a dry run. No actual approval or merge was performed.*"
             else
                 echo "*This approval was performed automatically by the Auto-Approve GitHub Action.*"
             fi
