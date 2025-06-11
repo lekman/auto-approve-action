@@ -19,7 +19,7 @@ jobs:
     name: Setup
     runs-on: ubuntu-latest
     outputs:
-      token: ${{ steps.app-token.outputs.token }}
+      token: ${{ steps.generate-token.outputs.token }}
     steps:
       - name: Generate GitHub App token
         id: app-token
@@ -28,6 +28,12 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           repositories: ${{ github.event.repository.name }}
+      
+      - name: Output token
+        id: generate-token
+        run: |
+          echo "::add-mask::${{ steps.app-token.outputs.token }}"
+          echo "token=${{ steps.app-token.outputs.token }}" >> $GITHUB_OUTPUT
 
   # Unit Tests - Run all script unit tests
   unit-tests:
