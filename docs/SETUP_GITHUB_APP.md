@@ -38,9 +38,12 @@ The default `GITHUB_TOKEN` in GitHub Actions has limitations when it comes to ap
 ## Step 3: Install the App
 
 1. On the app's settings page, click **Install App**
-2. Choose your repository
-3. Select **Only select repositories** and choose your repository
-4. Click **Install**
+2. Choose your account (user or organization)
+3. Select **Only select repositories** 
+4. Choose the specific repository: `auto-approve-action` (or your repository name)
+5. Click **Install**
+
+**Important**: The app must be installed on the specific repository, not just at the user/organization level.
 
 ## Step 4: Configure Repository Settings
 
@@ -72,6 +75,12 @@ Push a commit or create a PR to trigger the CI workflow. The Setup job should no
 - Make sure `APP_ID` is set as a repository secret
 - Both `APP_ID` and `APP_PRIVATE_KEY` should be repository secrets
 - Secrets are accessed with `secrets.APP_ID` and `secrets.APP_PRIVATE_KEY`
+
+### "Not Found - get-a-user-installation-for-the-authenticated-app"
+- This means the GitHub App is not installed on the repository
+- Go to your GitHub App settings and click "Install App"
+- Make sure to select the specific repository where you're running the action
+- The app must be installed on the repository, not just created
 
 ### "Resource not accessible by integration"
 - Check that your GitHub App has the correct permissions
