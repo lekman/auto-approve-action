@@ -19,8 +19,8 @@ jobs:
     name: Setup
     runs-on: ubuntu-latest
     outputs:
-      token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
-      has-app-token: ${{ steps.app-token.outputs.token != '' }}
+      token: ${{ steps.token.outputs.token }}
+      has-app-token: ${{ steps.token.outputs.has-app-token }}
     steps:
       - name: Generate GitHub App token
         id: app-token
@@ -31,12 +31,17 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
       
-      - name: Token Status
+      - name: Set token output
+        id: token
         run: |
           if [[ "${{ steps.app-token.outputs.token }}" != "" ]]; then
             echo "✅ Using GitHub App token for authentication"
+            echo "token=${{ steps.app-token.outputs.token }}" >> $GITHUB_OUTPUT
+            echo "has-app-token=true" >> $GITHUB_OUTPUT
           else
             echo "ℹ️ Using default GITHUB_TOKEN for authentication"
+            echo "token=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_OUTPUT
+            echo "has-app-token=false" >> $GITHUB_OUTPUT
           fi
 
   # Unit Tests - Run all script unit tests
