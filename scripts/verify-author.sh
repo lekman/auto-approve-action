@@ -118,8 +118,14 @@ main() {
         log_success "Author '$pr_author' is authorized to trigger auto-approval"
         
         # Export for use by other scripts
-        export VERIFIED_PR_AUTHOR="$pr_author"
-        export VERIFIED_PR_NUMBER="$pr_number"
+        export VALIDATED_PR_AUTHOR="$pr_author"
+        export VALIDATED_PR_NUMBER="$pr_number"
+        
+        # Make available for subsequent steps via GITHUB_ENV
+        if [[ -n "${GITHUB_ENV:-}" ]]; then
+            echo "VALIDATED_PR_AUTHOR=$pr_author" >> "$GITHUB_ENV"
+            echo "VALIDATED_PR_NUMBER=$pr_number" >> "$GITHUB_ENV"
+        fi
         
         exit 0
     else

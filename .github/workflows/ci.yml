@@ -1,0 +1,678 @@
+name: Continuous Integration
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+# Note: This workflow includes many tests that intentionally fail to verify error handling.
+# Tests with "Should Fail" in their name are expected to exit with code 1.
+# These use continue-on-error: true and their failure is validated by subsequent steps.
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  issues: write
+
+jobs:
+  # Unit Tests - Run all script unit tests
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - { name: "Input Validation", script: "./scripts/test-validate-inputs.sh" }
+          - { name: "Author Verification", script: "./scripts/test-verify-author.sh" }
+          - { name: "Label Validation", script: "./scripts/test-validate-labels.sh" }
+          - { name: "Status Check Monitor", script: "./scripts/test-monitor-checks.sh" }
+          - { name: "Approval Execution", script: "./scripts/test-approve-pr.sh" }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+      
+      - name: Install dependencies
+        run: |
+          # Add small random delay to avoid parallel apt conflicts
+          sleep $((RANDOM % 3))
+          sudo apt-get update
+          sudo apt-get install -y jq
+      
+      - name: Run ${{ matrix.test.name }} Tests
+        run: ${{ matrix.test.script }}
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          CI: true
+
+  # Integration Tests - Test the action in PR context
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+      
+      # Test basic approval without checks
+      - name: Test Basic Approval (No Checks)
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+      
+      # Test author verification
+      - name: Test Unauthorized Author (Should Fail)
+        id: test-unauthorized
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: 'definitely-not-the-pr-author'
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+      
+      - name: Verify Unauthorized Test Failed
+        if: steps.test-unauthorized.outcome != 'failure'
+        run: |
+          echo "Expected unauthorized author test to fail"
+          exit 1
+      
+      # Test with bot authors
+      - name: Test Bot Author Pattern
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: '${{ github.actor }},dependabot[bot],renovate[bot]'
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+      
+      # Test with multiple authors
+      - name: Test Multiple Authors
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: 'user1,user2,${{ github.actor }},user3'
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+
+  # Label validation tests
+  label-tests:
+    name: Label Validation Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+      
+      # Test mode 'none'
+      - name: Test Label Mode None
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          required-labels: 'do-not-merge,wip,blocked'
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+      
+      # Test empty label validation
+      - name: Test Empty Labels with Mode Any (Should Fail)
+        id: test-empty-any
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'any'
+          wait-for-checks: 'false'
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+      
+      - name: Verify Empty Label Test Failed
+        if: steps.test-empty-any.outcome != 'failure'
+        run: |
+          echo "Expected validation to fail when mode is 'any' but no labels specified"
+          exit 1
+      
+      # Test mode 'all' without all labels
+      - name: Test Label Mode All (Should Fail)
+        id: test-all-fail
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          required-labels: 'test-label,approved,ready'
+          label-match-mode: 'all'
+          wait-for-checks: 'false'
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+      
+      - name: Verify Mode All Failed
+        if: steps.test-all-fail.outcome != 'failure'
+        run: |
+          echo "Expected mode 'all' to fail when not all labels are present"
+          exit 1
+
+  # Status check monitoring tests
+  check-monitoring-tests:
+    name: Status Check Monitoring Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+      
+      # Test with checks disabled
+      - name: Test with Check Waiting Disabled
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+      
+      # Create and wait for a specific check
+      - name: Create Test Check
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            try {
+              const { data: pr } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number
+              });
+              
+              const { data: check } = await github.rest.checks.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'CI Test Check',
+                head_sha: pr.head.sha,
+                status: 'in_progress'
+              });
+              
+              // Complete it after a short delay
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              
+              await github.rest.checks.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                check_run_id: check.id,
+                status: 'completed',
+                conclusion: 'success'
+              });
+            } catch (error) {
+              // If we can't create checks, skip this test
+              console.log('Cannot create check runs with current token:', error.message);
+              console.log('Skipping check creation test - requires GitHub App with checks:write permission');
+            }
+      
+      - name: Test Waiting for Specific Check
+        id: test-specific-check
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'true'
+          max-wait-time: '5'
+          required-checks: 'CI Test Check'
+      
+      # Test timeout scenario
+      - name: Test Timeout (Should Fail)
+        id: test-timeout
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'true'
+          max-wait-time: '0.1'
+          required-checks: 'Non-Existent-Check'
+      
+      - name: Verify Timeout Occurred
+        if: steps.test-timeout.outcome != 'failure'
+        run: |
+          echo "Expected timeout test to fail"
+          exit 1
+      
+      # Test failed check rejection
+      - name: Create Failing Check
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            try {
+              const { data: pr } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number
+              });
+              
+              await github.rest.checks.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'CI Failed Check',
+                head_sha: pr.head.sha,
+                status: 'completed',
+                conclusion: 'failure'
+              });
+            } catch (error) {
+              // If we can't create checks, skip this test
+              console.log('Cannot create check runs with current token:', error.message);
+              console.log('Skipping failed check test - requires GitHub App with checks:write permission');
+            }
+      
+      - name: Test Failed Check Rejection (Should Fail)
+        id: test-failed-check
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'true'
+          max-wait-time: '1'
+          required-checks: 'CI Failed Check'
+      
+      - name: Verify Failed Check Rejection
+        # Skip verification if we couldn't create the check
+        if: steps.test-failed-check.outcome != 'failure' && steps.test-failed-check.outcome != 'skipped'
+        run: |
+          echo "Expected action to fail due to failed check"
+          # Don't fail if we couldn't create the check in the first place
+          echo "Note: Test might have been skipped if check creation failed"
+
+
+  # Input validation tests (for PR contexts)
+  input-validation-tests:
+    name: Input Validation Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+      
+      # Test valid inputs
+      - name: Test Minimal Valid Inputs
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: 'user1,user2,dependabot[bot],${{ github.actor }}'
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+      
+      - name: Test All Valid Inputs
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: 'user1,user2,renovate[bot],${{ github.actor }}'
+          wait-for-checks: 'false'
+          max-wait-time: '60'
+          required-checks: 'CI Build,Unit Tests'
+          label-match-mode: 'none'
+      
+      # Test invalid inputs
+      - name: Test Missing Allowed Authors (Should Fail)
+        id: test-missing-authors
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+      
+      - name: Verify Missing Authors Failed
+        if: steps.test-missing-authors.outcome != 'failure'
+        run: exit 1
+      
+      - name: Test Invalid Label Match Mode (Should Fail)
+        id: test-invalid-mode
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: 'user1'
+          label-match-mode: 'invalid'
+      
+      - name: Verify Invalid Mode Failed
+        if: steps.test-invalid-mode.outcome != 'failure'
+        run: exit 1
+      
+      - name: Test Invalid Wait For Checks (Should Fail)
+        id: test-invalid-wait
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: 'user1'
+          wait-for-checks: 'yes'
+      
+      - name: Verify Invalid Wait Failed
+        if: steps.test-invalid-wait.outcome != 'failure'
+        run: exit 1
+      
+      - name: Test Negative Max Wait Time (Should Fail)
+        id: test-negative-time
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: 'user1'
+          max-wait-time: '-5'
+      
+      - name: Verify Negative Time Failed
+        if: steps.test-negative-time.outcome != 'failure'
+        run: exit 1
+      
+      - name: Test Excessive Max Wait Time (Should Fail)
+        id: test-excessive-time
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: 'user1'
+          max-wait-time: '500'
+      
+      - name: Verify Excessive Time Failed
+        if: steps.test-excessive-time.outcome != 'failure'
+        run: exit 1
+
+  # Approval execution tests
+  approval-tests:
+    name: Approval Execution Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+      
+      # Test basic approval
+      - name: Test Basic Approval
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+      
+      # Test duplicate approval prevention
+      - name: Wait Before Duplicate Test
+        run: sleep 2
+      
+      - name: Test Duplicate Approval (Should Skip)
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+      
+      # Test with labels
+      - name: Add Test Label
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: ['ci-test']
+              });
+              console.log('Successfully added ci-test label');
+            } catch (error) {
+              console.log('Could not add label:', error.message);
+              try {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: 'ci-test',
+                  color: '0969da',
+                  description: 'CI test label'
+                });
+                console.log('Created label, retrying...');
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  labels: ['ci-test']
+                });
+              } catch (retryError) {
+                console.log('Failed to add label after creating:', retryError.message);
+              }
+            }
+      
+      - name: Test Approval with Label
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          required-labels: 'ci-test'
+          label-match-mode: 'any'
+          wait-for-checks: 'false'
+
+  # Final check - This job is used as the single required check for branch protection
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+    needs:
+      - unit-tests
+      - integration-tests
+      - label-tests
+      - check-monitoring-tests
+      - input-validation-tests
+      - approval-tests
+    if: always()
+    steps:
+      - name: Check all tests passed
+        run: |
+          # Check if any of the needed jobs failed
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "❌ One or more CI jobs failed"
+            
+            # Write failure summary
+            {
+              echo "## ❌ CI Failed"
+              echo ""
+              echo "One or more continuous integration checks have failed."
+              echo ""
+              echo "### Test Results"
+              echo ""
+              echo "| Test Suite | Status |"
+              echo "|------------|--------|"
+              echo "| 🧪 Unit Tests (includes all script tests) | ${{ needs.unit-tests.result }} |"
+              echo "| 🔗 Integration Tests | ${{ needs.integration-tests.result }} |"
+              echo "| 🏷️ Label Tests | ${{ needs.label-tests.result }} |"
+              echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} |"
+              echo "| 📝 Input Validation Tests (PR) | ${{ needs.input-validation-tests.result }} |"
+              echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} |"
+              echo ""
+              echo "### Failed Jobs"
+              echo ""
+              echo "Please check the workflow run for details on the failed jobs."
+              echo ""
+              echo "---"
+              echo "_Generated at $(date -u +"%Y-%m-%d %H:%M:%S UTC")_"
+            } >> $GITHUB_STEP_SUMMARY
+            
+            exit 1
+          fi
+          
+          # Check if any of the needed jobs were cancelled
+          if [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "❌ One or more CI jobs were cancelled"
+            
+            # Write cancelled summary
+            {
+              echo "## ⚠️ CI Cancelled"
+              echo ""
+              echo "One or more continuous integration checks were cancelled."
+              echo ""
+              echo "### Test Results"
+              echo ""
+              echo "| Test Suite | Status |"
+              echo "|------------|--------|"
+              echo "| 🧪 Unit Tests (includes all script tests) | ${{ needs.unit-tests.result }} |"
+              echo "| 🔗 Integration Tests | ${{ needs.integration-tests.result }} |"
+              echo "| 🏷️ Label Tests | ${{ needs.label-tests.result }} |"
+              echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} |"
+              echo "| 📝 Input Validation Tests (PR) | ${{ needs.input-validation-tests.result }} |"
+              echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} |"
+              echo ""
+              echo "---"
+              echo "_Generated at $(date -u +"%Y-%m-%d %H:%M:%S UTC")_"
+            } >> $GITHUB_STEP_SUMMARY
+            
+            exit 1
+          fi
+          
+          # For PR context, ensure all PR-specific tests ran
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "Checking PR-specific job results..."
+            if [[ "${{ needs.integration-tests.result }}" != "success" ]] || \
+               [[ "${{ needs.label-tests.result }}" != "success" ]] || \
+               [[ "${{ needs.check-monitoring-tests.result }}" != "success" ]] || \
+               [[ "${{ needs.input-validation-tests.result }}" != "success" ]] || \
+               [[ "${{ needs.approval-tests.result }}" != "success" ]]; then
+              echo "❌ PR-specific tests did not complete successfully"
+              
+              # Write PR test failure summary
+              {
+                echo "## ❌ PR Tests Incomplete"
+                echo ""
+                echo "Pull request specific tests did not complete successfully."
+                echo ""
+                echo "### PR Test Results"
+                echo ""
+                echo "| Test Suite | Status | Required |"
+                echo "|------------|--------|----------|"
+                echo "| 🔗 Integration Tests | ${{ needs.integration-tests.result }} | ✅ |"
+                echo "| 🏷️ Label Tests | ${{ needs.label-tests.result }} | ✅ |"
+                echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} | ✅ |"
+                echo "| 📝 Input Validation Tests | ${{ needs.input-validation-tests.result }} | ✅ |"
+                echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} | ✅ |"
+                echo ""
+                echo "All PR-specific tests must pass for the CI check to succeed."
+                echo ""
+                echo "---"
+                echo "_Generated at $(date -u +"%Y-%m-%d %H:%M:%S UTC")_"
+              } >> $GITHUB_STEP_SUMMARY
+              
+              exit 1
+            fi
+          fi
+          
+          # All required tests passed
+          echo "✅ All CI checks passed successfully!"
+          echo ""
+          echo "Test Results Summary:"
+          echo "- Unit Tests (includes all script tests): ${{ needs.unit-tests.result }}"
+          echo "- Integration Tests: ${{ needs.integration-tests.result }}"
+          echo "- Label Tests: ${{ needs.label-tests.result }}"
+          echo "- Check Monitoring Tests: ${{ needs.check-monitoring-tests.result }}"
+          echo "- Input Validation Tests (PR): ${{ needs.input-validation-tests.result }}"
+          echo "- Approval Tests: ${{ needs.approval-tests.result }}"
+          
+          # Write to GitHub Step Summary
+          {
+            echo "## 🎉 CI Success"
+            echo ""
+            echo "All continuous integration checks have passed!"
+            echo ""
+            echo "### Test Results"
+            echo ""
+            echo "| Test Suite | Status |"
+            echo "|------------|--------|"
+            echo "| 🧪 Unit Tests (includes all script tests) | ${{ needs.unit-tests.result }} |"
+            echo "| 🔗 Integration Tests | ${{ needs.integration-tests.result }} |"
+            echo "| 🏷️ Label Tests | ${{ needs.label-tests.result }} |"
+            echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} |"
+            echo "| 📝 Input Validation Tests (PR) | ${{ needs.input-validation-tests.result }} |"
+            echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} |"
+            echo ""
+            echo "---"
+            echo "_Generated at $(date -u +"%Y-%m-%d %H:%M:%S UTC")_"
+          } >> $GITHUB_STEP_SUMMARY

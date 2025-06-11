@@ -1,7 +1,7 @@
-# This workflow is designed to run as the GitHub Actions app using the default GITHUB_TOKEN.
-# No additional GitHub App installation is required for standard use.
+# This workflow is designed to use a GitHub App for authentication to allow PR creation and approval.
+# Requires APP_ID and APP_PRIVATE_KEY to be set as repository secrets.
 
-name: "Generate Changelog"
+name: "Continuous Deployment"
 
 on:
   workflow_dispatch:
@@ -35,12 +35,20 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
       - name: "Release Please"
         uses: googleapis/release-please-action@v4
         if: github.ref == 'refs/heads/main'
         id: release
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           target-branch: ${{ github.ref_name}}
           config-file: .github/release-config.json
           manifest-file: .github/release-manifest.json
@@ -58,7 +66,7 @@ jobs:
       - name: Update major version tag (v${{ steps.release.outputs.major }})
         if: ${{ steps.release.outputs.release_created }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com

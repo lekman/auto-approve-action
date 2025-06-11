@@ -2,6 +2,20 @@
 
 Thank you for your interest in contributing to the Auto-Approve GitHub Action! We welcome contributions from the community to improve features, fix bugs, and enhance documentation.
 
+## Commit Signing Requirement
+
+**All commits to this repository must be [signed and verified](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits).**
+
+### Why are signed commits required?
+- Signed commits help ensure the authenticity and integrity of code contributions.
+- They protect the project from unauthorized or malicious changes by verifying the identity of contributors.
+- This is an important security and compliance measure for open source and collaborative projects.
+
+### How to set up commit signing
+- Follow GitHub's official guide: [Signing commits](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits)
+- You can use GPG, SSH, or S/MIME keys to sign your commits.
+- After setup, make sure your commits show as "Verified" on GitHub.
+
 ## Feature Requests
 
 If you have an idea for a new feature, please [submit a feature request](https://github.com/lekman/auto-approve-action/issues/new?template=feature_request.md) using our GitHub issue template.
@@ -20,7 +34,7 @@ If you have an idea for a new feature, please [submit a feature request](https:/
    ```
 
 3. **Make changes:**
-   - Edit the workflow YAML files in `.github/workflows/`, shell scripts, or the composite action files (see `action.yml`).
+   - Edit the shell scripts (`/scripts/`), or the composite action files (see `action.yml`).
    - This repository does not require dependency installation; it is a pure GitHub Action repo.
 
 4. **Test your changes:**

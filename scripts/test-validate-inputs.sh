@@ -7,11 +7,20 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VALIDATE_SCRIPT="$SCRIPT_DIR/validate-inputs.sh"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Detect if running in CI
+if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    # No colors in CI
+    RED=''
+    GREEN=''
+    YELLOW=''
+    NC=''
+else
+    # Colors for output
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    NC='\033[0m' # No Color
+fi
 
 # Test counter
 TESTS_PASSED=0
@@ -23,7 +32,11 @@ run_test() {
     local expected_result="$2"  # "pass" or "fail"
     shift 2
     
-    echo -e "${YELLOW}Running test: $test_name${NC}"
+    if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+        echo "Running test: $test_name"
+    else
+        echo -e "${YELLOW}Running test: $test_name${NC}"
+    fi
     
     # Set environment variables from remaining arguments
     while [[ $# -gt 0 ]]; do
@@ -40,15 +53,23 @@ run_test() {
     
     # Check if result matches expectation
     if [[ "$actual_result" == "$expected_result" ]]; then
-        echo -e "${GREEN}✓ Test passed${NC}"
-        ((TESTS_PASSED++))
+        if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+            echo "✓ Test passed"
+        else
+            echo -e "${GREEN}✓ Test passed${NC}"
+        fi
+        TESTS_PASSED=$((TESTS_PASSED + 1))
     else
-        echo -e "${RED}✗ Test failed (expected: $expected_result, got: $actual_result)${NC}"
-        ((TESTS_FAILED++))
+        if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+            echo "✗ Test failed (expected: $expected_result, got: $actual_result)"
+        else
+            echo -e "${RED}✗ Test failed (expected: $expected_result, got: $actual_result)${NC}"
+        fi
+        TESTS_FAILED=$((TESTS_FAILED + 1))
     fi
     
     # Clean up environment
-    unset ALLOWED_AUTHORS REQUIRED_LABELS LABEL_MATCH_MODE WAIT_FOR_CHECKS MAX_WAIT_TIME REQUIRED_CHECKS
+    unset ALLOWED_AUTHORS REQUIRED_LABELS LABEL_MATCH_MODE WAIT_FOR_CHECKS MAX_WAIT_TIME REQUIRED_CHECKS 2>/dev/null || true
     echo
 }
 
@@ -162,8 +183,13 @@ run_test "label-match-mode 'none' without labels" "pass" \
 
 # Summary
 echo "======================================="
-echo -e "${GREEN}Tests passed: $TESTS_PASSED${NC}"
-echo -e "${RED}Tests failed: $TESTS_FAILED${NC}"
+if [[ -n "${CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "Tests passed: $TESTS_PASSED"
+    echo "Tests failed: $TESTS_FAILED"
+else
+    echo -e "${GREEN}Tests passed: $TESTS_PASSED${NC}"
+    echo -e "${RED}Tests failed: $TESTS_FAILED${NC}"
+fi
 echo "======================================="
 
 if [[ $TESTS_FAILED -gt 0 ]]; then
