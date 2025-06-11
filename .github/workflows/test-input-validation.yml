@@ -8,6 +8,10 @@ on:
       - 'action.yml'
       - '.github/workflows/test-input-validation.yml'
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   test-valid-inputs:
     name: Test Valid Inputs
