@@ -19,6 +19,31 @@ permissions:
   issues: write
 
 jobs:
+  # Generate GitHub App token for all jobs that need it
+  setup:
+    name: Setup
+    runs-on: ubuntu-latest
+    outputs:
+      token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+      has-app-token: ${{ steps.app-token.outputs.token != '' }}
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: peter-evans/create-github-app-token@v2
+        if: ${{ secrets.APP_ID != '' }}
+        continue-on-error: true
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      
+      - name: Token Status
+        run: |
+          if [[ "${{ steps.app-token.outputs.token }}" != "" ]]; then
+            echo "✅ Using GitHub App token for authentication"
+          else
+            echo "ℹ️ Using default GITHUB_TOKEN for authentication"
+          fi
+
   # Unit Tests - Run all script unit tests
   unit-tests:
     name: Unit Tests
@@ -47,25 +72,17 @@ jobs:
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
+    needs: setup
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Generate GitHub App token (if available)
-        id: app-token
-        uses: peter-evans/create-github-app-token@v2
-        if: ${{ secrets.APP_ID != '' }}
-        continue-on-error: true
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-      
       # Test basic approval without checks
       - name: Test Basic Approval (No Checks)
         uses: ./
         with:
-          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'false'
@@ -76,7 +93,7 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: 'definitely-not-the-pr-author'
           label-match-mode: 'none'
           wait-for-checks: 'false'
@@ -91,7 +108,7 @@ jobs:
       - name: Test Bot Author Pattern
         uses: ./
         with:
-          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: '${{ github.actor }},dependabot[bot],renovate[bot]'
           label-match-mode: 'none'
           wait-for-checks: 'false'
@@ -100,7 +117,7 @@ jobs:
       - name: Test Multiple Authors
         uses: ./
         with:
-          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: 'user1,user2,${{ github.actor }},user3'
           label-match-mode: 'none'
           wait-for-checks: 'false'
@@ -109,25 +126,17 @@ jobs:
   label-tests:
     name: Label Validation Tests
     runs-on: ubuntu-latest
+    needs: setup
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Generate GitHub App token (if available)
-        id: app-token
-        uses: peter-evans/create-github-app-token@v2
-        if: ${{ secrets.APP_ID != '' }}
-        continue-on-error: true
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-      
       # Test mode 'none'
       - name: Test Label Mode None
         uses: ./
         with:
-          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: ${{ github.actor }}
           required-labels: 'do-not-merge,wip,blocked'
           label-match-mode: 'none'
@@ -139,7 +148,7 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'any'
           wait-for-checks: 'false'
@@ -156,7 +165,7 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: ${{ github.actor }}
           required-labels: 'test-label,approved,ready'
           label-match-mode: 'all'
@@ -172,25 +181,17 @@ jobs:
   check-monitoring-tests:
     name: Status Check Monitoring Tests
     runs-on: ubuntu-latest
+    needs: setup
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Generate GitHub App token (if available)
-        id: app-token
-        uses: peter-evans/create-github-app-token@v2
-        if: ${{ secrets.APP_ID != '' }}
-        continue-on-error: true
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-      
       # Test with checks disabled
       - name: Test with Check Waiting Disabled
         uses: ./
         with:
-          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'false'
@@ -229,7 +230,7 @@ jobs:
       - name: Test Waiting for Specific Check
         uses: ./
         with:
-          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'true'
@@ -242,7 +243,7 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'true'
@@ -281,7 +282,7 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'true'
@@ -389,25 +390,17 @@ jobs:
   approval-tests:
     name: Approval Execution Tests
     runs-on: ubuntu-latest
+    needs: setup
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Generate GitHub App token (if available)
-        id: app-token
-        uses: peter-evans/create-github-app-token@v2
-        if: ${{ secrets.APP_ID != '' }}
-        continue-on-error: true
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-      
       # Test basic approval
       - name: Test Basic Approval
         uses: ./
         with:
-          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'false'
@@ -419,7 +412,7 @@ jobs:
       - name: Test Duplicate Approval (Should Skip)
         uses: ./
         with:
-          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'false'
@@ -428,7 +421,7 @@ jobs:
       - name: Add Test Label
         uses: actions/github-script@v7
         with:
-          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           script: |
             try {
               await github.rest.issues.addLabels({
@@ -463,8 +456,135 @@ jobs:
       - name: Test Approval with Label
         uses: ./
         with:
-          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          github-token: ${{ needs.setup.outputs.token }}
           allowed-authors: ${{ github.actor }}
           required-labels: 'ci-test'
           label-match-mode: 'any'
           wait-for-checks: 'false'
+
+  # Final check - This job is used as the single required check for branch protection
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+    needs:
+      - setup
+      - unit-tests
+      - integration-tests
+      - label-tests
+      - check-monitoring-tests
+      - input-validation-tests
+      - approval-tests
+    if: always()
+    steps:
+      - name: Check all tests passed
+        run: |
+          # Check if any of the needed jobs failed
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "❌ One or more CI jobs failed"
+            
+            # Write failure summary
+            {
+              echo "## ❌ CI Failed"
+              echo ""
+              echo "One or more continuous integration checks have failed."
+              echo ""
+              echo "### Test Results"
+              echo ""
+              echo "| Test Suite | Status |"
+              echo "|------------|--------|"
+              echo "| 🧪 Unit Tests | ${{ needs.unit-tests.result }} |"
+              echo "| 🔗 Integration Tests | ${{ needs.integration-tests.result }} |"
+              echo "| 🏷️ Label Tests | ${{ needs.label-tests.result }} |"
+              echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} |"
+              echo "| 📝 Input Validation Tests | ${{ needs.input-validation-tests.result }} |"
+              echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} |"
+              echo ""
+              echo "### Failed Jobs"
+              echo ""
+              echo "Please check the workflow run for details on the failed jobs."
+              echo ""
+              echo "---"
+              echo "_Generated at $(date -u +"%Y-%m-%d %H:%M:%S UTC")_"
+            } >> $GITHUB_STEP_SUMMARY
+            
+            exit 1
+          fi
+          
+          # Check if any of the needed jobs were cancelled
+          if [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "❌ One or more CI jobs were cancelled"
+            
+            # Write cancelled summary
+            {
+              echo "## ⚠️ CI Cancelled"
+              echo ""
+              echo "One or more continuous integration checks were cancelled."
+              echo ""
+              echo "### Test Results"
+              echo ""
+              echo "| Test Suite | Status |"
+              echo "|------------|--------|"
+              echo "| 🧪 Unit Tests | ${{ needs.unit-tests.result }} |"
+              echo "| 🔗 Integration Tests | ${{ needs.integration-tests.result }} |"
+              echo "| 🏷️ Label Tests | ${{ needs.label-tests.result }} |"
+              echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} |"
+              echo "| 📝 Input Validation Tests | ${{ needs.input-validation-tests.result }} |"
+              echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} |"
+              echo ""
+              echo "---"
+              echo "_Generated at $(date -u +"%Y-%m-%d %H:%M:%S UTC")_"
+            } >> $GITHUB_STEP_SUMMARY
+            
+            exit 1
+          fi
+          
+          # For PR context, ensure all PR-specific tests ran
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "Checking PR-specific job results..."
+            if [[ "${{ needs.integration-tests.result }}" != "success" ]] || \
+               [[ "${{ needs.label-tests.result }}" != "success" ]] || \
+               [[ "${{ needs.check-monitoring-tests.result }}" != "success" ]] || \
+               [[ "${{ needs.approval-tests.result }}" != "success" ]]; then
+              echo "❌ PR-specific tests did not complete successfully"
+              exit 1
+            fi
+          fi
+          
+          # All required tests passed
+          echo "✅ All CI checks passed successfully!"
+          echo ""
+          echo "Test Results Summary:"
+          echo "- Unit Tests: ${{ needs.unit-tests.result }}"
+          echo "- Integration Tests: ${{ needs.integration-tests.result }}"
+          echo "- Label Tests: ${{ needs.label-tests.result }}"
+          echo "- Check Monitoring Tests: ${{ needs.check-monitoring-tests.result }}"
+          echo "- Input Validation Tests: ${{ needs.input-validation-tests.result }}"
+          echo "- Approval Tests: ${{ needs.approval-tests.result }}"
+          
+          # Write to GitHub Step Summary
+          {
+            echo "## 🎉 CI Success"
+            echo ""
+            echo "All continuous integration checks have passed!"
+            echo ""
+            echo "### Test Results"
+            echo ""
+            echo "| Test Suite | Status |"
+            echo "|------------|--------|"
+            echo "| 🧪 Unit Tests | ${{ needs.unit-tests.result }} |"
+            echo "| 🔗 Integration Tests | ${{ needs.integration-tests.result }} |"
+            echo "| 🏷️ Label Tests | ${{ needs.label-tests.result }} |"
+            echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} |"
+            echo "| 📝 Input Validation Tests | ${{ needs.input-validation-tests.result }} |"
+            echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} |"
+            echo ""
+            echo "### Token Status"
+            if [[ "${{ needs.setup.outputs.has-app-token }}" == "true" ]]; then
+              echo "🔐 Using GitHub App token for enhanced permissions"
+            else
+              echo "🔑 Using default GITHUB_TOKEN"
+            fi
+            echo ""
+            echo "---"
+            echo "_Generated at $(date -u +"%Y-%m-%d %H:%M:%S UTC")_"
+          } >> $GITHUB_STEP_SUMMARY
