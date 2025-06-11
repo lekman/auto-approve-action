@@ -15,10 +15,12 @@ get_changed_files() {
     log_info "Fetching list of changed files for PR #$pr_number..."
     
     local files_json
+    log_debug "Running: gh pr view $pr_number --json files"
     if ! files_json=$(gh pr view "$pr_number" --json files 2>&1); then
         log_error "Failed to fetch PR file information: $files_json"
         return 1
     fi
+    log_debug "Got files JSON: $files_json"
     
     # Extract file paths from JSON
     local file_paths
@@ -35,25 +37,35 @@ matches_pattern() {
     local file="$1"
     local pattern="$2"
     
-    # Use bash's pattern matching
-    # Convert glob patterns to bash patterns
-    local bash_pattern="${pattern//\*\*/\*}"
-    
-    # Check if file matches pattern
-    if [[ "$file" == $bash_pattern ]]; then
+    # Handle simple patterns without wildcards
+    if [[ "$pattern" == "$file" ]]; then
         return 0
     fi
     
-    # For ** patterns, we need more sophisticated matching
-    if [[ "$pattern" == *"**"* ]]; then
-        # Convert ** to regex for proper directory matching
-        local regex_pattern="${pattern//\*\*/.*}"
-        regex_pattern="${regex_pattern//\*/[^/]*}"
-        regex_pattern="^${regex_pattern}$"
-        
-        if [[ "$file" =~ $regex_pattern ]]; then
-            return 0
-        fi
+    # Convert glob pattern to regex
+    local regex_pattern="$pattern"
+    
+    # Escape regex special chars (except * which we'll handle)
+    regex_pattern="${regex_pattern//./\\.}"
+    regex_pattern="${regex_pattern//+/\\+}"
+    regex_pattern="${regex_pattern//\?/\\?}"
+    
+    # Special handling for /**/ pattern (matches zero or more path segments)
+    # This allows docs/**/*.md to match both docs/README.md and docs/subdir/file.md
+    regex_pattern="${regex_pattern//\/\*\*\//\/(.*\/)?}"
+    
+    # Handle remaining ** (at start or end)
+    regex_pattern="${regex_pattern//\*\*/.*}"
+    
+    # Replace single * with [^/]* (matches any character except /)
+    regex_pattern="${regex_pattern//\*/[^/]*}"
+    
+    # Anchor the pattern
+    regex_pattern="^${regex_pattern}$"
+    
+    # Test the match
+    if [[ "$file" =~ $regex_pattern ]]; then
+        return 0
     fi
     
     return 1
@@ -67,6 +79,8 @@ validate_paths() {
     # Get changed files
     local changed_files
     if ! changed_files=$(get_changed_files "$pr_number"); then
+        log_error "Failed to get changed files"
+        export VALIDATED_PATH_REASON="Failed to retrieve changed files from PR"
         return 1
     fi
     

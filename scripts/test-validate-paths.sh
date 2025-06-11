@@ -1,8 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # test-validate-paths.sh - Unit tests for validate-paths.sh
 
 set -euo pipefail
+
+# Unset any gh alias that might interfere with our tests
+unalias gh 2>/dev/null || true
 
 # Colors for output
 RED='\033[0;31m'
@@ -40,67 +43,83 @@ setup_test_env() {
     export PATH_FILTERS="$1"
     export GITHUB_STEP_SUMMARY="/tmp/test_summary_$$"
     > "$GITHUB_STEP_SUMMARY"
+    
+    # Create a temporary directory for mock commands
+    export MOCK_BIN_DIR="/tmp/mock_bin_$$"
+    mkdir -p "$MOCK_BIN_DIR"
+    
+    # Create mock gh command
+    cat > "$MOCK_BIN_DIR/gh" << 'EOF'
+#!/bin/bash
+if [[ "$1" == "pr" && "$2" == "view" && "$4" == "--json" && "$5" == "files" ]]; then
+    # Return mock file data based on PR number
+    case "$3" in
+        "123")
+            # Test PR with docs and src files
+            echo '{
+                "files": [
+                    {"path": "docs/README.md"},
+                    {"path": "docs/api/guide.md"},
+                    {"path": "src/main.js"},
+                    {"path": "src/lib/utils.js"},
+                    {"path": "tests/unit/test.js"}
+                ]
+            }'
+            ;;
+        "124")
+            # Test PR with only docs files
+            echo '{
+                "files": [
+                    {"path": "docs/README.md"},
+                    {"path": "docs/contributing.md"}
+                ]
+            }'
+            ;;
+        "125")
+            # Test PR with config files
+            echo '{
+                "files": [
+                    {"path": ".github/workflows/ci.yml"},
+                    {"path": "config/settings.json"},
+                    {"path": "package.json"}
+                ]
+            }'
+            ;;
+        "126")
+            # Empty PR
+            echo '{"files": []}'
+            ;;
+        *)
+            echo "Error: Unknown PR" >&2
+            exit 1
+            ;;
+    esac
+else
+    # For any other gh commands, fail
+    echo "Error: Unexpected gh command: $@" >&2
+    exit 1
+fi
+EOF
+    chmod +x "$MOCK_BIN_DIR/gh"
+    
+    # Add mock directory to PATH (must be first)
+    export PATH="$MOCK_BIN_DIR:$PATH"
 }
 
 cleanup_test_env() {
     unset GITHUB_TOKEN PR_NUMBER PATH_FILTERS
     rm -f "$GITHUB_STEP_SUMMARY"
+    
+    # Clean up mock directory
+    if [[ -n "$MOCK_BIN_DIR" ]] && [[ -d "$MOCK_BIN_DIR" ]]; then
+        rm -rf "$MOCK_BIN_DIR"
+    fi
+    unset MOCK_BIN_DIR
+    
+    # Restore PATH
+    export PATH="${PATH#*:}"
 }
 
-# Mock gh command
-gh() {
-    case "$1" in
-        pr)
-            if [[ "$2" == "view" && "$4" == "--json" && "$5" == "files" ]]; then
-                # Return mock file data based on PR number
-                case "$3" in
-                    "123")
-                        # Test PR with docs and src files
-                        echo '{
-                            "files": [
-                                {"path": "docs/README.md"},
-                                {"path": "docs/api/guide.md"},
-                                {"path": "src/main.js"},
-                                {"path": "src/lib/utils.js"},
-                                {"path": "tests/unit/test.js"}
-                            ]
-                        }'
-                        ;;
-                    "124")
-                        # Test PR with only docs files
-                        echo '{
-                            "files": [
-                                {"path": "docs/README.md"},
-                                {"path": "docs/contributing.md"}
-                            ]
-                        }'
-                        ;;
-                    "125")
-                        # Test PR with config files
-                        echo '{
-                            "files": [
-                                {"path": ".github/workflows/ci.yml"},
-                                {"path": "config/settings.json"},
-                                {"path": "package.json"}
-                            ]
-                        }'
-                        ;;
-                    "126")
-                        # Empty PR
-                        echo '{"files": []}'
-                        ;;
-                    *)
-                        echo "Error: Unknown PR" >&2
-                        return 1
-                        ;;
-                esac
-            fi
-            ;;
-    esac
-}
-
-# Export the mock function
-export -f gh
 
 # Test 1: Basic inclusion pattern matching
 test_start "Basic inclusion pattern - docs files"
