@@ -20,6 +20,7 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || !startsWith(github.head_ref, 'release-please--')
     strategy:
       fail-fast: false
       matrix:
@@ -59,7 +60,7 @@ jobs:
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')
     permissions:
       contents: read
       pull-requests: write
@@ -135,7 +136,7 @@ jobs:
   label-tests:
     name: Label Validation Tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')
     permissions:
       contents: read
       pull-requests: write
@@ -209,7 +210,7 @@ jobs:
   check-monitoring-tests:
     name: Status Check Monitoring Tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')
     permissions:
       contents: read
       pull-requests: write
@@ -359,7 +360,7 @@ jobs:
   input-validation-tests:
     name: Input Validation Tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')
     permissions:
       contents: read
       pull-requests: write
@@ -469,7 +470,7 @@ jobs:
   approval-tests:
     name: Approval Execution Tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')
     permissions:
       contents: read
       pull-requests: write
@@ -558,7 +559,7 @@ jobs:
   path-tests:
     name: Path Validation Tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')
     permissions:
       contents: read
       pull-requests: write
@@ -634,6 +635,22 @@ jobs:
     steps:
       - name: Check all tests passed
         run: |
+          # Special handling for release-please branches
+          if [[ "${{ github.head_ref }}" == release-please--* ]]; then
+            echo "✅ Skipping CI checks for release-please branch"
+            {
+              echo "## ✅ CI Skipped for Release Please"
+              echo ""
+              echo "This is a release-please branch. CI checks are automatically skipped."
+              echo ""
+              echo "Branch: ${{ github.head_ref }}"
+              echo ""
+              echo "---"
+              echo "_Generated at $(date -u +"%Y-%m-%d %H:%M:%S UTC")_"
+            } >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+          
           # Check if any of the needed jobs failed
           if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
             echo "❌ One or more CI jobs failed"
@@ -696,15 +713,27 @@ jobs:
             exit 1
           fi
           
-          # For PR context, ensure all PR-specific tests ran
+          # For PR context, ensure all PR-specific tests ran (unless skipped for release-please)
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             echo "Checking PR-specific job results..."
-            if [[ "${{ needs.integration-tests.result }}" != "success" ]] || \
-               [[ "${{ needs.label-tests.result }}" != "success" ]] || \
-               [[ "${{ needs.check-monitoring-tests.result }}" != "success" ]] || \
-               [[ "${{ needs.input-validation-tests.result }}" != "success" ]] || \
-               [[ "${{ needs.approval-tests.result }}" != "success" ]] || \
-               [[ "${{ needs.path-tests.result }}" != "success" ]]; then
+            # Check if all jobs were skipped (happens for release-please branches)
+            if [[ "${{ needs.unit-tests.result }}" == "skipped" ]] && \
+               [[ "${{ needs.integration-tests.result }}" == "skipped" ]] && \
+               [[ "${{ needs.label-tests.result }}" == "skipped" ]] && \
+               [[ "${{ needs.check-monitoring-tests.result }}" == "skipped" ]] && \
+               [[ "${{ needs.input-validation-tests.result }}" == "skipped" ]] && \
+               [[ "${{ needs.approval-tests.result }}" == "skipped" ]] && \
+               [[ "${{ needs.path-tests.result }}" == "skipped" ]]; then
+              echo "✅ All jobs skipped (release-please branch)"
+              exit 0
+            fi
+            
+            if [[ "${{ needs.integration-tests.result }}" != "success" && "${{ needs.integration-tests.result }}" != "skipped" ]] || \
+               [[ "${{ needs.label-tests.result }}" != "success" && "${{ needs.label-tests.result }}" != "skipped" ]] || \
+               [[ "${{ needs.check-monitoring-tests.result }}" != "success" && "${{ needs.check-monitoring-tests.result }}" != "skipped" ]] || \
+               [[ "${{ needs.input-validation-tests.result }}" != "success" && "${{ needs.input-validation-tests.result }}" != "skipped" ]] || \
+               [[ "${{ needs.approval-tests.result }}" != "success" && "${{ needs.approval-tests.result }}" != "skipped" ]] || \
+               [[ "${{ needs.path-tests.result }}" != "success" && "${{ needs.path-tests.result }}" != "skipped" ]]; then
               echo "❌ PR-specific tests did not complete successfully"
               
               # Write PR test failure summary
