@@ -29,19 +29,58 @@ verify_token_permissions() {
         return 1
     fi
     
-    # Check if we have write permissions
-    local repo_permissions
-    if ! repo_permissions=$(gh api "/repos/${GITHUB_REPOSITORY}" --jq '.permissions' 2>&1); then
-        log_error "Unable to check repository permissions: $repo_permissions"
-        return 1
+    # Debug: Check what type of token we're using
+    local token_type="unknown"
+    if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+        # Check if it's a GitHub App token or regular token
+        local rate_limit
+        if rate_limit=$(gh api rate_limit --jq '.rate.limit' 2>/dev/null); then
+            if [[ $rate_limit -gt 1000 ]]; then
+                token_type="app-or-pat"
+            else
+                token_type="github-token"
+            fi
+        fi
+    fi
+    log_info "Token type detected: $token_type"
+    
+    # For GitHub Actions default token, we need to check permissions differently
+    # The default GITHUB_TOKEN has limited scope even with pull-requests: write
+    local can_approve=false
+    
+    # Try to get current user to verify token is valid
+    local current_user
+    if ! current_user=$(gh api user --jq '.login' 2>&1); then
+        # For GITHUB_TOKEN, use the actor instead
+        if [[ "$token_type" == "github-token" ]]; then
+            current_user="${GITHUB_ACTOR:-github-actions[bot]}"
+            log_info "Using GITHUB_ACTOR as current user: $current_user"
+        else
+            log_error "Unable to determine current user: $current_user"
+            return 1
+        fi
+    else
+        log_info "Current user: $current_user"
     fi
     
-    # Check if push permission is available (needed for PR reviews)
-    local has_push
-    has_push=$(echo "$repo_permissions" | jq -r '.push // false')
+    # Skip permission check for GITHUB_TOKEN in Actions - it has implicit permissions
+    if [[ -n "${GITHUB_ACTIONS:-}" ]] && [[ "$token_type" == "github-token" ]]; then
+        log_info "Running in GitHub Actions with GITHUB_TOKEN - assuming PR write permissions are granted by workflow"
+        can_approve=true
+    else
+        # For other tokens, check if we can access the reviews endpoint
+        local reviews_check
+        if reviews_check=$(gh api "/repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/reviews" 2>&1); then
+            can_approve=true
+        else
+            log_error "Token does not have write permissions required for PR approval: $reviews_check"
+            return 1
+        fi
+    fi
     
-    if [[ "$has_push" != "true" ]]; then
+    if [[ "$can_approve" != "true" ]]; then
         log_error "Token does not have write permissions required for PR approval"
+        log_info "Make sure the workflow has 'pull-requests: write' permission"
         return 1
     fi
     
@@ -55,8 +94,14 @@ check_existing_approval() {
     # Get current user info
     local current_user
     if ! current_user=$(gh api user --jq '.login' 2>&1); then
-        log_error "Unable to determine current user: $current_user"
-        return 1
+        # For GITHUB_TOKEN, gh api user doesn't work, use the actor
+        if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+            current_user="${GITHUB_ACTOR:-github-actions[bot]}"
+            log_info "Using GITHUB_ACTOR for approval check: $current_user"
+        else
+            log_error "Unable to determine current user: $current_user"
+            return 1
+        fi
     fi
     
     # Check existing reviews

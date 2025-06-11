@@ -91,5 +91,6 @@ runs:
         ACTION_PATH: ${{ github.action_path }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
         GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_ACTOR: ${{ github.actor }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
         LABEL_MATCH_MODE: ${{ inputs.label-match-mode }}
