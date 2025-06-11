@@ -20,7 +20,7 @@ inputs:
   wait-for-checks:
     description: "Whether to wait for status checks to complete before approval"
     required: false
-    default: "true"
+    default: "false"
   max-wait-time:
     description: "Maximum time in minutes to wait for checks to complete"
     required: false

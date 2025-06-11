@@ -12,7 +12,7 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   test-author-verification:
@@ -23,10 +23,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
+      - name: Generate GitHub App token (if available)
+        id: app-token
+        uses: peter-evans/create-github-app-token@v2
+        if: ${{ secrets.APP_ID != '' }}
+        continue-on-error: true
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      
       - name: Test with authorized author (should pass)
         uses: ./
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'false'  # Don't wait for other test workflows
@@ -36,7 +45,7 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           allowed-authors: 'definitely-not-the-pr-author'
           label-match-mode: 'none'
           wait-for-checks: 'false'  # Don't wait for other test workflows
@@ -55,10 +64,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
+      - name: Generate GitHub App token (if available)
+        id: app-token-bot
+        uses: peter-evans/create-github-app-token@v2
+        if: ${{ secrets.APP_ID != '' }}
+        continue-on-error: true
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      
       - name: Test with bot author pattern
         uses: ./
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.app-token-bot.outputs.token || secrets.GITHUB_TOKEN }}
           allowed-authors: '${{ github.actor }},dependabot[bot],renovate[bot]'
           label-match-mode: 'none'
           wait-for-checks: 'false'  # Don't wait for other test workflows
@@ -71,10 +89,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
+      - name: Generate GitHub App token (if available)
+        id: app-token-multi
+        uses: peter-evans/create-github-app-token@v2
+        if: ${{ secrets.APP_ID != '' }}
+        continue-on-error: true
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      
       - name: Test with multiple allowed authors
         uses: ./
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.app-token-multi.outputs.token || secrets.GITHUB_TOKEN }}
           allowed-authors: 'user1,user2,${{ github.actor }},user3'
           label-match-mode: 'none'
           wait-for-checks: 'false'  # Don't wait for other test workflows
