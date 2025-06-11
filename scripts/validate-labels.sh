@@ -193,7 +193,7 @@ main() {
     
     # Make available for subsequent steps via GITHUB_ENV
     if [[ -n "${GITHUB_ENV:-}" ]]; then
-        echo "VALIDATED_LABELS=$matched_labels" >> "$GITHUB_ENV"
+        echo "VALIDATED_LABELS=$pr_labels" >> "$GITHUB_ENV"
         echo "LABEL_MATCH_MODE=$LABEL_MATCH_MODE" >> "$GITHUB_ENV"
     fi
     
