@@ -29,6 +29,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
+          wait-for-checks: 'false'  # Don't wait for other test workflows
       
       - name: Test with unauthorized author (should fail)
         id: unauthorized-test
@@ -38,6 +39,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           allowed-authors: 'definitely-not-the-pr-author'
           label-match-mode: 'none'
+          wait-for-checks: 'false'  # Don't wait for other test workflows
       
       - name: Verify unauthorized test failed
         if: steps.unauthorized-test.outcome != 'failure'
@@ -59,6 +61,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           allowed-authors: '${{ github.actor }},dependabot[bot],renovate[bot]'
           label-match-mode: 'none'
+          wait-for-checks: 'false'  # Don't wait for other test workflows
 
   test-multiple-authors:
     name: Test Multiple Authors
@@ -74,6 +77,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           allowed-authors: 'user1,user2,${{ github.actor }},user3'
           label-match-mode: 'none'
+          wait-for-checks: 'false'  # Don't wait for other test workflows
 
   test-unit-tests:
     name: Run Unit Tests

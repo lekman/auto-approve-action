@@ -1,0 +1,105 @@
+name: Test Integration
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - 'scripts/*.sh'
+      - 'action.yml'
+      - '.github/workflows/test-integration.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  test-basic-approval:
+    name: Test Basic Approval (No Check Waiting)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Generate GitHub App token (if available)
+        id: app-token
+        uses: peter-evans/create-github-app-token@v2
+        if: ${{ secrets.APP_ID != '' }}
+        continue-on-error: true
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      
+      - name: Test auto-approve without waiting for checks
+        id: auto-approve
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+      
+      - name: Check result
+        run: |
+          echo "Approval outcome: ${{ steps.auto-approve.outcome }}"
+          if [[ "${{ steps.auto-approve.outcome }}" == "success" ]]; then
+            echo "✅ PR was successfully auto-approved"
+          else
+            echo "❌ PR was not auto-approved (check logs for details)"
+          fi
+
+  test-with-specific-checks:
+    name: Test With Specific Check Requirements
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Create a passing check
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            
+            await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'Integration Test Check',
+              head_sha: pr.head.sha,
+              status: 'completed',
+              conclusion: 'success',
+              output: {
+                title: 'Integration Test Passed',
+                summary: 'This check was created for integration testing'
+              }
+            });
+      
+      - name: Test auto-approve waiting for specific check
+        id: auto-approve
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'true'
+          max-wait-time: '2'
+          required-checks: 'Integration Test Check'  # Only wait for our specific check
+      
+      - name: Check result
+        run: |
+          echo "Approval outcome: ${{ steps.auto-approve.outcome }}"
+          if [[ "${{ steps.auto-approve.outcome }}" == "success" ]]; then
+            echo "✅ PR was successfully auto-approved after check passed"
+          else
+            echo "❌ PR was not auto-approved (check logs for details)"
+          fi
