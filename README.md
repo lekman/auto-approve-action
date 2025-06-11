@@ -129,7 +129,7 @@ If you encounter any issues or have questions:
 
 - **[Open an issue](https://github.com/lekman/auto-approve-action/issues/new?template=bug_report.md)** for bugs or problems
 - **[Request a feature](https://github.com/lekman/auto-approve-action/issues/new?template=feature_request.md)** for enhancements
-- **[Check existing issues](https://github.com/lekman/auto-approve-action/issues)** for known problems and solutions
+- **[Check existing issues](https://github.com/lekman/auto-approve-action/issues?q=is%3Aissue)** for known problems and solutions
 
 ## Contributors
 
