@@ -51,10 +51,15 @@ verify_token_permissions() {
     # Try to get current user to verify token is valid
     local current_user
     if ! current_user=$(gh api user --jq '.login' 2>&1); then
-        # For GITHUB_TOKEN, use the actor instead
-        if [[ "$token_type" == "github-token" ]]; then
+        # Check if it's a GitHub App by trying the app endpoint
+        local app_slug
+        if app_slug=$(gh api /app --jq '.slug' 2>&1) && [[ -n "$app_slug" ]]; then
+            current_user="${app_slug}[bot]"
+            log_info "Detected GitHub App: $current_user"
+        elif [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+            # For GITHUB_TOKEN in Actions, use the actor
             current_user="${GITHUB_ACTOR:-github-actions[bot]}"
-            log_info "Using GITHUB_ACTOR as current user: $current_user"
+            log_info "Using GITHUB_ACTOR as current user: $current_user (token type: $token_type)"
         else
             log_error "Unable to determine current user: $current_user"
             return 1
@@ -63,12 +68,12 @@ verify_token_permissions() {
         log_info "Current user: $current_user"
     fi
     
-    # Skip permission check for GITHUB_TOKEN in Actions - it has implicit permissions
-    if [[ -n "${GITHUB_ACTIONS:-}" ]] && [[ "$token_type" == "github-token" ]]; then
-        log_info "Running in GitHub Actions with GITHUB_TOKEN - assuming PR write permissions are granted by workflow"
+    # Skip permission check for tokens in Actions - they have implicit permissions from workflow
+    if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+        log_info "Running in GitHub Actions - assuming PR write permissions are granted by workflow"
         can_approve=true
     else
-        # For other tokens, check if we can access the reviews endpoint
+        # For tokens outside Actions, check if we can access the reviews endpoint
         local reviews_check
         if reviews_check=$(gh api "/repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/reviews" 2>&1); then
             can_approve=true
@@ -94,8 +99,13 @@ check_existing_approval() {
     # Get current user info
     local current_user
     if ! current_user=$(gh api user --jq '.login' 2>&1); then
-        # For GITHUB_TOKEN, gh api user doesn't work, use the actor
-        if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+        # Check if it's a GitHub App by trying the app endpoint
+        local app_slug
+        if app_slug=$(gh api /app --jq '.slug' 2>&1) && [[ -n "$app_slug" ]]; then
+            current_user="${app_slug}[bot]"
+            log_info "Using GitHub App for approval check: $current_user"
+        elif [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+            # For GITHUB_TOKEN in Actions, use the actor
             current_user="${GITHUB_ACTOR:-github-actions[bot]}"
             log_info "Using GITHUB_ACTOR for approval check: $current_user"
         else
