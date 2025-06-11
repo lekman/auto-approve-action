@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.1.0](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.0.0...auto-approve-action@v1.1.0) (2025-06-11)
+
+
+### Features
+
+* add author verification and auto-approval workflows for PRs ([f9af78f](https://github.com/lekman/auto-approve-action/commit/f9af78fa60232cd5c8f3d07ec165bf192230aaf4))
+* add conditional check for PR author verification in action.yml ([5069af4](https://github.com/lekman/auto-approve-action/commit/5069af476eeae66cdaf99b91e4553205c888db17))
+* add workflow step to update major version tag during release ([eb03814](https://github.com/lekman/auto-approve-action/commit/eb03814a0bb25455ced988786c5088465db6579c))
+* allow dynamic inclusion of the PR author in allowed-authors for input validation ([af6cb78](https://github.com/lekman/auto-approve-action/commit/af6cb78b08d06de53f3d7c8b76284536ed6fd0c9))
+* enhance author verification scripts for CI compatibility and improve output formatting ([37b07a1](https://github.com/lekman/auto-approve-action/commit/37b07a1b65889a7a7cfe888feb313d91a9710962))
+
+
+### Bug Fixes
+
+* ensure unset commands do not fail in test-verify-author.sh ([e723b13](https://github.com/lekman/auto-approve-action/commit/e723b13fcc429b3e9c1b0c19d6c5a3bbabc01016))
+
 ## 1.0.0 (2025-06-11)
 
 
