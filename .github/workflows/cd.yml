@@ -37,10 +37,11 @@ jobs:
 
       - name: Generate GitHub App token
         id: app-token
-        uses: peter-evans/create-github-app-token@v2
+        uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
 
       - name: "Release Please"
         uses: googleapis/release-please-action@v4
