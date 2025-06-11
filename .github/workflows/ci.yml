@@ -3,6 +3,7 @@ name: Continuous Integration
 on:
   workflow_dispatch:
   pull_request:
+    types: [opened, synchronize, reopened]
 
 # Note: This workflow includes many tests that intentionally fail to verify error handling.
 # Tests with "Should Fail" in their name are expected to exit with code 1.
@@ -81,6 +82,7 @@ jobs:
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'false'
+          dry-run: 'true'
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
       
@@ -94,6 +96,7 @@ jobs:
           allowed-authors: 'definitely-not-the-pr-author'
           label-match-mode: 'none'
           wait-for-checks: 'false'
+          dry-run: 'true'
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
       
@@ -111,6 +114,7 @@ jobs:
           allowed-authors: '${{ github.actor }},dependabot[bot],renovate[bot]'
           label-match-mode: 'none'
           wait-for-checks: 'false'
+          dry-run: 'true'
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
       
@@ -122,6 +126,7 @@ jobs:
           allowed-authors: 'user1,user2,${{ github.actor }},user3'
           label-match-mode: 'none'
           wait-for-checks: 'false'
+          dry-run: 'true'
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
@@ -154,6 +159,7 @@ jobs:
           required-labels: 'do-not-merge,wip,blocked'
           label-match-mode: 'none'
           wait-for-checks: 'false'
+          dry-run: 'true'
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
       
@@ -167,6 +173,7 @@ jobs:
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'any'
           wait-for-checks: 'false'
+          dry-run: 'true'
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
       
@@ -187,6 +194,7 @@ jobs:
           required-labels: 'test-label,approved,ready'
           label-match-mode: 'all'
           wait-for-checks: 'false'
+          dry-run: 'true'
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
       
@@ -225,6 +233,7 @@ jobs:
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'false'
+          dry-run: 'true'
       
       # Create and wait for a specific check
       - name: Create Test Check
@@ -274,6 +283,7 @@ jobs:
           wait-for-checks: 'true'
           max-wait-time: '5'
           required-checks: 'CI Test Check'
+          dry-run: 'true'
       
       # Test timeout scenario
       - name: Test Timeout (Should Fail)
@@ -287,6 +297,7 @@ jobs:
           wait-for-checks: 'true'
           max-wait-time: '0.1'
           required-checks: 'Non-Existent-Check'
+          dry-run: 'true'
       
       - name: Verify Timeout Occurred
         if: steps.test-timeout.outcome != 'failure'
@@ -332,6 +343,7 @@ jobs:
           wait-for-checks: 'true'
           max-wait-time: '1'
           required-checks: 'CI Failed Check'
+          dry-run: 'true'
       
       - name: Verify Failed Check Rejection
         # Skip verification if we couldn't create the check
@@ -370,6 +382,7 @@ jobs:
           allowed-authors: 'user1,user2,dependabot[bot],${{ github.actor }}'
           label-match-mode: 'none'
           wait-for-checks: 'false'
+          dry-run: 'true'
       
       - name: Test All Valid Inputs
         uses: ./
@@ -380,6 +393,7 @@ jobs:
           max-wait-time: '60'
           required-checks: 'CI Build,Unit Tests'
           label-match-mode: 'none'
+          dry-run: 'true'
       
       # Test invalid inputs
       - name: Test Missing Allowed Authors (Should Fail)
@@ -388,6 +402,7 @@ jobs:
         uses: ./
         with:
           github-token: ${{ steps.app-token.outputs.token }}
+          dry-run: 'true'
       
       - name: Verify Missing Authors Failed
         if: steps.test-missing-authors.outcome != 'failure'
@@ -401,6 +416,7 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: 'user1'
           label-match-mode: 'invalid'
+          dry-run: 'true'
       
       - name: Verify Invalid Mode Failed
         if: steps.test-invalid-mode.outcome != 'failure'
@@ -414,6 +430,7 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: 'user1'
           wait-for-checks: 'yes'
+          dry-run: 'true'
       
       - name: Verify Invalid Wait Failed
         if: steps.test-invalid-wait.outcome != 'failure'
@@ -427,6 +444,7 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: 'user1'
           max-wait-time: '-5'
+          dry-run: 'true'
       
       - name: Verify Negative Time Failed
         if: steps.test-negative-time.outcome != 'failure'
@@ -440,6 +458,7 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: 'user1'
           max-wait-time: '500'
+          dry-run: 'true'
       
       - name: Verify Excessive Time Failed
         if: steps.test-excessive-time.outcome != 'failure'
