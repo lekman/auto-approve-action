@@ -35,8 +35,9 @@ runs:
     - name: Validate Inputs
       shell: bash
       run: |
-        ${{ github.action_path }}/scripts/validate-inputs.sh
+        "$ACTION_PATH/scripts/validate-inputs.sh"
       env:
+        ACTION_PATH: ${{ github.action_path }}
         ALLOWED_AUTHORS: ${{ inputs.allowed-authors }}
         REQUIRED_LABELS: ${{ inputs.required-labels }}
         LABEL_MATCH_MODE: ${{ inputs.label-match-mode }}
