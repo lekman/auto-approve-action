@@ -1,0 +1,144 @@
+{
+	"search.exclude": {
+		"out": true,
+		"dist": true,
+    "node_modules": true,
+    "coverage": true,
+	},
+	"typescript.tsc.autoDetect": "off",
+  "wiz.codePolicies.IAC Configuration": [],
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "prettier.requireConfig": true,
+  "prettier.useEditorConfig": false,
+  "eslint.validate": [
+    "javascript",
+    "typescript"
+  ],
+  "files.exclude": {
+    ".env": true,
+    ".env.*": true,
+    ".git": true,
+    ".gitignore": true,
+    ".npmrc": true,
+    ".roomodes": true,
+    ".taskmasterconfig": true,
+    ".vscode": true,
+    ".windsurfrules": true,
+    "**/.certs": true,
+    "**/.claude": true,
+    "**/.cursor": true,
+    "**/.env": true,
+    "**/.env.*": true,
+    "**/.eslint.config.js": true,
+    "**/.eslintrc.cjs": true,
+    "**/.eslintrc.js": true,
+    "**/.eslintrc.json": true,
+    "**/.git": true,
+    "**/.github": true,
+    "**/.gitignore": true,
+    "**/.idea": true,
+    "**/.npmrc": true,
+    "**/.prettierignore": true,
+    "**/.prettierrc": true,
+    "**/.roo": true,
+    "**/.vscode": true,
+    "**/.windsurfrules": true,
+    "**/*-workspace": true,
+    "**/*.roo*": true,
+    "**/build": true,
+    "**/CLAUDE.md": true,
+    "**/coverage": true,
+    "**/debug*.log": true,
+    "**/dist": true,
+    "**/docker-compose.yml": true,
+    "**/docker-compose*.yml": true,
+    "**/Dockerfile": true,
+    "**/eslint.config.js": true,
+    "**/jest.config.js": true,
+    "**/jest.config.json": true,
+    "**/jest.config.ts": true,
+    "**/logs": true,
+    "**/loki-*.*": true,
+    "**/node_modules": true,
+    "**/package-lock.json": true,
+    "**/tmp": true,
+    "**/tsconfig*.*": true,
+    "**/typedoc.json": true,
+    "node_modules": true,
+    "package-lock.json": true,
+    "scripts": true,
+    "taskfile.yml": true,
+    "tasks": true,
+    "**/vite**.*": true,
+    "**/out": true,
+    "**/.taskmaster": true,
+    ".github/actions": true,
+    ".github": true,
+    "webpack.config.js": true,
+    "LICENSE": true,
+    "CHANGELOG.md": true,
+    ".vscodeignore": true
+  },
+  "servers": {
+    "taskmaster-ai": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "--package=task-master-ai",
+        "task-master-ai"
+      ],
+      "type": "stdio"
+    }
+  },
+  "terminal.integrated.profiles.osx": {
+    "Start": {
+      "path": "zsh",
+      "color": "terminal.ansiBlue",
+      "icon": "play-circle",
+      "args": [
+        "-c",
+        "echo 'Start terminal initialized'; zsh"
+      ]
+    },
+    "Test": {
+      "path": "zsh",
+      "color": "terminal.ansiYellow",
+      "icon": "beaker",
+      "args": [
+        "-c",
+        "echo 'Test terminal initialized'; zsh"
+      ]
+    },
+    "Claude": {
+      "path": "zsh",
+      "color": "terminal.ansiMagenta",
+      "icon": "comment-discussion",
+      "args": [
+        "-c",
+        "echo 'Claude terminal initialized'; zsh"
+      ]
+    },
+    "Tasks": {
+      "path": "zsh",
+      "color": "terminal.ansiGreen",
+      "icon": "tasklist",
+      "args": [
+        "-c",
+        "echo 'Tasks terminal initialized'; zsh"
+      ]
+    }
+  },
+  "terminal.integrated.defaultProfile.osx": "Start",
+  "terminal.integrated.enablePersistentSessions": true,
+  "terminal.integrated.persistentSessionReviveProcess": "onExitAndWindowClose"
+}
