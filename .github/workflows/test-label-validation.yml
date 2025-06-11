@@ -1,0 +1,115 @@
+name: Test Label Validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, labeled, unlabeled]
+  push:
+    paths:
+      - 'scripts/validate-labels.sh'
+      - 'action.yml'
+      - '.github/workflows/test-label-validation.yml'
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  test-unit-tests:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+      
+      - name: Run label validation tests
+        run: ./scripts/test-validate-labels.sh
+
+  test-label-validation-pr:
+    name: Test Label Validation on PR
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Test mode 'none' - should pass if no blocking labels
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          required-labels: 'do-not-merge,wip,blocked'
+          label-match-mode: 'none'
+      
+      - name: Add test label
+        run: |
+          gh pr edit ${{ github.event.pull_request.number }} --add-label "test-label"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Test mode 'any' - should pass with test label
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          required-labels: 'test-label,approved,ready'
+          label-match-mode: 'any'
+      
+      - name: Test mode 'all' - should fail without all labels
+        id: test-all-fail
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          required-labels: 'test-label,approved,ready'
+          label-match-mode: 'all'
+      
+      - name: Verify mode 'all' failed as expected
+        if: steps.test-all-fail.outcome != 'failure'
+        run: |
+          echo "Expected mode 'all' to fail when not all labels are present"
+          exit 1
+      
+      - name: Remove test label
+        if: always()
+        run: |
+          gh pr edit ${{ github.event.pull_request.number }} --remove-label "test-label" || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  test-label-edge-cases:
+    name: Test Label Edge Cases
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Test with no required labels in 'none' mode
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+      
+      - name: Test empty label validation
+        id: test-empty-any
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'any'
+          # No required-labels provided
+      
+      - name: Verify empty label validation failed
+        if: steps.test-empty-any.outcome != 'failure'
+        run: |
+          echo "Expected validation to fail when mode is 'any' but no labels specified"
+          exit 1
