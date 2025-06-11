@@ -303,10 +303,26 @@ jobs:
           echo "Expected action to fail due to failed check"
           exit 1
 
-  # Input validation tests
+  # Input validation tests (for non-PR contexts)
+  input-validation-unit-tests:
+    name: Input Validation Tests (Unit)
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Run input validation unit tests
+        run: ./scripts/test-validate-inputs.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CI: true
+
+  # Input validation tests (for PR contexts)
   input-validation-tests:
     name: Input Validation Tests
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -481,6 +497,7 @@ jobs:
       - label-tests
       - check-monitoring-tests
       - input-validation-tests
+      - input-validation-unit-tests
       - approval-tests
     if: always()
     steps:
@@ -504,7 +521,8 @@ jobs:
               echo "| 🔗 Integration Tests | ${{ needs.integration-tests.result }} |"
               echo "| 🏷️ Label Tests | ${{ needs.label-tests.result }} |"
               echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} |"
-              echo "| 📝 Input Validation Tests | ${{ needs.input-validation-tests.result }} |"
+              echo "| 📝 Input Validation Tests (PR) | ${{ needs.input-validation-tests.result }} |"
+              echo "| 📝 Input Validation Tests (Unit) | ${{ needs.input-validation-unit-tests.result }} |"
               echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} |"
               echo ""
               echo "### Failed Jobs"
@@ -536,7 +554,8 @@ jobs:
               echo "| 🔗 Integration Tests | ${{ needs.integration-tests.result }} |"
               echo "| 🏷️ Label Tests | ${{ needs.label-tests.result }} |"
               echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} |"
-              echo "| 📝 Input Validation Tests | ${{ needs.input-validation-tests.result }} |"
+              echo "| 📝 Input Validation Tests (PR) | ${{ needs.input-validation-tests.result }} |"
+              echo "| 📝 Input Validation Tests (Unit) | ${{ needs.input-validation-unit-tests.result }} |"
               echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} |"
               echo ""
               echo "---"
@@ -552,6 +571,7 @@ jobs:
             if [[ "${{ needs.integration-tests.result }}" != "success" ]] || \
                [[ "${{ needs.label-tests.result }}" != "success" ]] || \
                [[ "${{ needs.check-monitoring-tests.result }}" != "success" ]] || \
+               [[ "${{ needs.input-validation-tests.result }}" != "success" ]] || \
                [[ "${{ needs.approval-tests.result }}" != "success" ]]; then
               echo "❌ PR-specific tests did not complete successfully"
               
@@ -568,6 +588,7 @@ jobs:
                 echo "| 🔗 Integration Tests | ${{ needs.integration-tests.result }} | ✅ |"
                 echo "| 🏷️ Label Tests | ${{ needs.label-tests.result }} | ✅ |"
                 echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} | ✅ |"
+                echo "| 📝 Input Validation Tests | ${{ needs.input-validation-tests.result }} | ✅ |"
                 echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} | ✅ |"
                 echo ""
                 echo "All PR-specific tests must pass for the CI check to succeed."
@@ -588,7 +609,8 @@ jobs:
           echo "- Integration Tests: ${{ needs.integration-tests.result }}"
           echo "- Label Tests: ${{ needs.label-tests.result }}"
           echo "- Check Monitoring Tests: ${{ needs.check-monitoring-tests.result }}"
-          echo "- Input Validation Tests: ${{ needs.input-validation-tests.result }}"
+          echo "- Input Validation Tests (PR): ${{ needs.input-validation-tests.result }}"
+          echo "- Input Validation Tests (Unit): ${{ needs.input-validation-unit-tests.result }}"
           echo "- Approval Tests: ${{ needs.approval-tests.result }}"
           
           # Write to GitHub Step Summary
@@ -605,7 +627,8 @@ jobs:
             echo "| 🔗 Integration Tests | ${{ needs.integration-tests.result }} |"
             echo "| 🏷️ Label Tests | ${{ needs.label-tests.result }} |"
             echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} |"
-            echo "| 📝 Input Validation Tests | ${{ needs.input-validation-tests.result }} |"
+            echo "| 📝 Input Validation Tests (PR) | ${{ needs.input-validation-tests.result }} |"
+            echo "| 📝 Input Validation Tests (Unit) | ${{ needs.input-validation-unit-tests.result }} |"
             echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} |"
             echo ""
             echo "### Token Status"
