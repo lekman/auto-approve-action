@@ -2,6 +2,8 @@ name: Test Input Validation
 
 on:
   workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize]
   push:
     paths:
       - 'scripts/validate-inputs.sh'
@@ -24,14 +26,14 @@ jobs:
         uses: ./
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          allowed-authors: 'user1,user2,dependabot[bot]'
+          allowed-authors: '${{ github.actor }},user1,user2,dependabot[bot]'
           label-match-mode: 'none'
       
       - name: Test with all valid inputs
         uses: ./
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          allowed-authors: 'user1,user2,renovate[bot]'
+          allowed-authors: '${{ github.actor }},user1,user2,renovate[bot]'
           required-labels: 'approved,ready'
           label-match-mode: 'all'
           wait-for-checks: 'true'

@@ -44,3 +44,14 @@ runs:
         WAIT_FOR_CHECKS: ${{ inputs.wait-for-checks }}
         MAX_WAIT_TIME: ${{ inputs.max-wait-time }}
         REQUIRED_CHECKS: ${{ inputs.required-checks }}
+    
+    - name: Verify PR Author
+      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
+      shell: bash
+      run: |
+        "$ACTION_PATH/scripts/verify-author.sh"
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        ALLOWED_AUTHORS: ${{ inputs.allowed-authors }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
