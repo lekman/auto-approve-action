@@ -46,6 +46,7 @@ runs:
         REQUIRED_CHECKS: ${{ inputs.required-checks }}
     
     - name: Verify PR Author
+      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
       shell: bash
       run: |
         "$ACTION_PATH/scripts/verify-author.sh"
