@@ -1,0 +1,255 @@
+#!/bin/bash
+
+# validate-paths.sh - Validates file paths changed in PR against configured patterns
+
+set -euo pipefail
+
+# Source the common logging library
+SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SOURCE_DIR/lib/logging.sh"
+
+# Function to get changed files in PR
+get_changed_files() {
+    local pr_number="$1"
+    
+    log_info "Fetching list of changed files for PR #$pr_number..."
+    
+    local files_json
+    if ! files_json=$(gh pr view "$pr_number" --json files 2>&1); then
+        log_error "Failed to fetch PR file information: $files_json"
+        return 1
+    fi
+    
+    # Extract file paths from JSON
+    local file_paths
+    if ! file_paths=$(echo "$files_json" | jq -r '.files[].path' 2>&1); then
+        log_error "Failed to parse PR files JSON: $file_paths"
+        return 1
+    fi
+    
+    echo "$file_paths"
+}
+
+# Function to check if a file matches a pattern
+matches_pattern() {
+    local file="$1"
+    local pattern="$2"
+    
+    # Use bash's pattern matching
+    # Convert glob patterns to bash patterns
+    local bash_pattern="${pattern//\*\*/\*}"
+    
+    # Check if file matches pattern
+    if [[ "$file" == $bash_pattern ]]; then
+        return 0
+    fi
+    
+    # For ** patterns, we need more sophisticated matching
+    if [[ "$pattern" == *"**"* ]]; then
+        # Convert ** to regex for proper directory matching
+        local regex_pattern="${pattern//\*\*/.*}"
+        regex_pattern="${regex_pattern//\*/[^/]*}"
+        regex_pattern="^${regex_pattern}$"
+        
+        if [[ "$file" =~ $regex_pattern ]]; then
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
+# Function to validate paths against filters
+validate_paths() {
+    local pr_number="$1"
+    local filters="$2"
+    
+    # Get changed files
+    local changed_files
+    if ! changed_files=$(get_changed_files "$pr_number"); then
+        return 1
+    fi
+    
+    # Count changed files
+    local file_count=$(echo "$changed_files" | grep -c . || echo 0)
+    log_info "Found $file_count changed file(s) in PR #$pr_number"
+    
+    if [[ $file_count -eq 0 ]]; then
+        log_warning "No files changed in PR"
+        return 0
+    fi
+    
+    # Parse filters into arrays
+    local include_patterns=()
+    local exclude_patterns=()
+    
+    IFS=',' read -ra filter_array <<< "$filters"
+    for filter in "${filter_array[@]}"; do
+        # Trim whitespace
+        filter=$(echo "$filter" | xargs)
+        
+        if [[ -z "$filter" ]]; then
+            continue
+        fi
+        
+        if [[ "$filter" == "!"* ]]; then
+            # Exclusion pattern
+            exclude_patterns+=("${filter:1}")
+        else
+            # Inclusion pattern
+            include_patterns+=("$filter")
+        fi
+    done
+    
+    log_info "Inclusion patterns: ${#include_patterns[@]} patterns"
+    log_info "Exclusion patterns: ${#exclude_patterns[@]} patterns"
+    
+    # Check each file against patterns
+    local matched_files=()
+    local excluded_files=()
+    local unmatched_files=()
+    
+    while IFS= read -r file; do
+        if [[ -z "$file" ]]; then
+            continue
+        fi
+        
+        local matched=false
+        local excluded=false
+        
+        # Check exclusion patterns first
+        for pattern in "${exclude_patterns[@]}"; do
+            if matches_pattern "$file" "$pattern"; then
+                excluded=true
+                excluded_files+=("$file")
+                log_info "File '$file' matches exclusion pattern '$pattern'"
+                break
+            fi
+        done
+        
+        # If excluded, skip inclusion check
+        if [[ "$excluded" == "true" ]]; then
+            continue
+        fi
+        
+        # Check inclusion patterns
+        if [[ ${#include_patterns[@]} -gt 0 ]]; then
+            for pattern in "${include_patterns[@]}"; do
+                if matches_pattern "$file" "$pattern"; then
+                    matched=true
+                    matched_files+=("$file")
+                    log_info "File '$file' matches inclusion pattern '$pattern'"
+                    break
+                fi
+            done
+            
+            if [[ "$matched" == "false" ]]; then
+                unmatched_files+=("$file")
+            fi
+        else
+            # If no inclusion patterns, all non-excluded files are matched
+            matched_files+=("$file")
+        fi
+    done <<< "$changed_files"
+    
+    # Determine approval status
+    local approval_status="approved"
+    local status_reason=""
+    
+    # If any files are excluded, fail
+    if [[ ${#excluded_files[@]} -gt 0 ]]; then
+        approval_status="rejected"
+        status_reason="PR contains files matching exclusion patterns"
+        log_error "PR contains ${#excluded_files[@]} file(s) matching exclusion patterns"
+        for file in "${excluded_files[@]}"; do
+            log_error "  - $file"
+        done
+    fi
+    
+    # If inclusion patterns are specified and no files match, fail
+    if [[ "$approval_status" == "approved" && ${#include_patterns[@]} -gt 0 && ${#matched_files[@]} -eq 0 ]]; then
+        approval_status="rejected"
+        status_reason="No files match the required inclusion patterns"
+        log_error "No files in PR match the required patterns"
+    fi
+    
+    # Log summary
+    log_info "Path validation summary:"
+    log_info "  - Total files: $file_count"
+    log_info "  - Matched files: ${#matched_files[@]}"
+    log_info "  - Excluded files: ${#excluded_files[@]}"
+    log_info "  - Unmatched files: ${#unmatched_files[@]}"
+    
+    # Export results for use by other scripts
+    export VALIDATED_PATH_STATUS="$approval_status"
+    export VALIDATED_PATH_REASON="$status_reason"
+    export VALIDATED_MATCHED_FILES="${#matched_files[@]}"
+    export VALIDATED_EXCLUDED_FILES="${#excluded_files[@]}"
+    
+    # Return based on approval status
+    if [[ "$approval_status" == "approved" ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Main execution
+main() {
+    log_step_start "File Path Validation"
+    
+    # Check required environment variables
+    if [[ -z "${GITHUB_TOKEN:-}" ]]; then
+        log_error "GITHUB_TOKEN environment variable is not set"
+        exit 1
+    fi
+    
+    if [[ -z "${PR_NUMBER:-}" ]]; then
+        log_error "PR_NUMBER environment variable is not set"
+        exit 1
+    fi
+    
+    if [[ -z "${PATH_FILTERS:-}" ]]; then
+        log_error "PATH_FILTERS environment variable is not set"
+        exit 1
+    fi
+    
+    log_info "Validating file paths for PR #$PR_NUMBER"
+    log_info "Path filters: $PATH_FILTERS"
+    
+    # Validate paths
+    if validate_paths "$PR_NUMBER" "$PATH_FILTERS"; then
+        log_success "File path validation passed! All file changes meet the configured criteria."
+        
+        # Add to GitHub Step Summary
+        add_to_summary "### ✅ File Path Validation"
+        add_to_summary ""
+        add_to_summary "All file changes in PR #$PR_NUMBER meet the configured path filters."
+        add_to_summary ""
+        add_to_summary "| Metric | Count |"
+        add_to_summary "|--------|-------|"
+        add_to_summary "| Matched Files | ${VALIDATED_MATCHED_FILES:-0} |"
+        add_to_summary "| Excluded Files | ${VALIDATED_EXCLUDED_FILES:-0} |"
+        
+        log_step_end "File Path Validation" "success"
+        exit 0
+    else
+        log_error "File path validation failed: ${VALIDATED_PATH_REASON:-Unknown reason}"
+        
+        # Add failure to GitHub Step Summary
+        add_to_summary "### ❌ File Path Validation Failed"
+        add_to_summary ""
+        add_to_summary "**Reason**: ${VALIDATED_PATH_REASON:-Unknown reason}"
+        add_to_summary ""
+        add_to_summary "| Metric | Count |"
+        add_to_summary "|--------|-------|"
+        add_to_summary "| Matched Files | ${VALIDATED_MATCHED_FILES:-0} |"
+        add_to_summary "| Excluded Files | ${VALIDATED_EXCLUDED_FILES:-0} |"
+        
+        log_step_end "File Path Validation" "failure"
+        exit 1
+    fi
+}
+
+# Run main function
+main "$@"

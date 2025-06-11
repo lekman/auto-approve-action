@@ -79,6 +79,20 @@ label-match-mode: 'any'
 max-wait-time: '10'
 ```
 
+**Path-Based Approval for Documentation:**
+```yaml
+allowed-authors: 'docs-team, contributors'
+path-filters: 'docs/**/*.md,README.md,*.md'
+label-match-mode: 'none'
+```
+
+**Security-Sensitive Path Exclusion:**
+```yaml
+allowed-authors: 'dependabot[bot]'
+path-filters: '**/*,!.github/**/*,!scripts/**/*.sh,!**/security/**'
+label-match-mode: 'none'
+```
+
 ## Configuration Reference
 
 ### Inputs
@@ -89,10 +103,13 @@ max-wait-time: '10'
 | `allowed-authors` | ✅ | - | Comma-separated list of GitHub usernames allowed for auto-approval |
 | `required-labels` | ❌ | `''` | Comma-separated list of required PR labels |
 | `label-match-mode` | ❌ | `'all'` | How to match labels: `all`, `any`, or `none` |
-| `wait-for-checks` | ❌ | `'true'` | Whether to wait for status checks to complete |
+| `wait-for-checks` | ❌ | `'false'` | Whether to wait for status checks to complete |
 | `required-checks` | ❌ | `''` | Specific check names to wait for (optional) |
 | `max-wait-time` | ❌ | `'30'` | Maximum wait time for checks in minutes |
-| `approval-message` | ❌ | `'Auto-approved after all checks passed ✅'` | Custom approval message |
+| `silent` | ❌ | `'false'` | Suppress job summary output |
+| `dry-run` | ❌ | `'false'` | Test mode - performs all checks but skips actual approval |
+| `merge-method` | ❌ | `'merge'` | Auto-merge method: `merge`, `squash`, or `rebase` |
+| `path-filters` | ❌ | `''` | File path patterns for conditional approval (supports glob patterns and ! for exclusion) |
 
 ### Outputs
 

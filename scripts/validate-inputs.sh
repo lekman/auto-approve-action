@@ -138,6 +138,26 @@ case "$MERGE_METHOD" in
         ;;
 esac
 
+# Validate path-filters (optional)
+if [[ -n "${PATH_FILTERS:-}" ]]; then
+    if ! is_valid_csv_list "$PATH_FILTERS"; then
+        log_error "Input 'path-filters' must be a valid comma-separated list when provided"
+        exit 1
+    fi
+    # Validate pattern syntax
+    IFS=',' read -ra patterns <<< "$PATH_FILTERS"
+    for pattern in "${patterns[@]}"; do
+        pattern=$(echo "$pattern" | xargs)
+        # Check for invalid characters in patterns
+        if [[ "$pattern" =~ [\[\]{}] ]]; then
+            log_warning "Pattern '$pattern' contains characters that may not work as expected. Use * and ** for wildcards."
+        fi
+    done
+    log_info "✓ path-filters: Valid ($PATH_FILTERS)"
+else
+    log_info "✓ path-filters: Not provided (optional)"
+fi
+
 log_info "✅ All input validations passed successfully!"
 
 # Add validation summary
@@ -150,6 +170,7 @@ add_to_summary "| wait-for-checks | $WAIT_FOR_CHECKS | ✅ Valid |"
 add_to_summary "| max-wait-time | $MAX_WAIT_TIME minutes | ✅ Valid |"
 add_to_summary "| required-checks | ${REQUIRED_CHECKS:-_(not provided)_} | ✅ Valid |"
 add_to_summary "| merge-method | ${MERGE_METHOD:-merge} | ✅ Valid |"
+add_to_summary "| path-filters | ${PATH_FILTERS:-_(not provided)_} | ✅ Valid |"
 
 log_step_end "Input Validation" "success"
 
@@ -160,3 +181,4 @@ export VALIDATED_LABEL_MATCH_MODE="$LABEL_MATCH_MODE"
 export VALIDATED_WAIT_FOR_CHECKS="$WAIT_FOR_CHECKS"
 export VALIDATED_MAX_WAIT_TIME="$MAX_WAIT_TIME"
 export VALIDATED_REQUIRED_CHECKS="${REQUIRED_CHECKS:-}"
+export VALIDATED_PATH_FILTERS="${PATH_FILTERS:-}"
