@@ -26,6 +26,30 @@ jobs:
       - name: Run approval execution tests
         run: ./scripts/test-approve-pr.sh
 
+  test-approval-basic:
+    name: Test Basic Approval (No Labels)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Generate GitHub App token
+        id: app-token
+        uses: peter-evans/create-github-app-token@v2
+        if: ${{ secrets.APP_ID != '' }}
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      
+      - name: Run auto-approve action without labels
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+
   test-approval-flow:
     name: Test Complete Approval Flow
     runs-on: ubuntu-latest
@@ -34,10 +58,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
+      - name: Generate GitHub App token
+        id: app-token
+        uses: peter-evans/create-github-app-token@v2
+        if: ${{ secrets.APP_ID != '' }}
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      
       - name: Add test label
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           script: |
             try {
               await github.rest.issues.addLabels({
@@ -46,14 +78,34 @@ jobs:
                 issue_number: context.issue.number,
                 labels: ['auto-approve-test']
               });
+              console.log('Successfully added auto-approve-test label');
             } catch (error) {
               console.log('Could not add label:', error.message);
+              // Try to create the label first if it doesn't exist
+              try {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: 'auto-approve-test',
+                  color: '0969da',
+                  description: 'Test label for auto-approve CI'
+                });
+                console.log('Created label, retrying...');
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  labels: ['auto-approve-test']
+                });
+              } catch (retryError) {
+                console.log('Failed to add label after creating:', retryError.message);
+              }
             }
       
       - name: Create a passing check
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           script: |
             const { data: pr } = await github.rest.pulls.get({
               owner: context.repo.owner,
@@ -77,7 +129,7 @@ jobs:
       - name: Run auto-approve action
         uses: ./
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           allowed-authors: ${{ github.actor }}
           required-labels: 'auto-approve-test'
           label-match-mode: 'any'
@@ -125,10 +177,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
+      - name: Generate GitHub App token
+        id: app-token
+        uses: peter-evans/create-github-app-token@v2
+        if: ${{ secrets.APP_ID != '' }}
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      
       - name: First approval attempt
         uses: ./
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'false'
@@ -139,7 +199,7 @@ jobs:
       - name: Second approval attempt (should skip)
         uses: ./
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
           wait-for-checks: 'false'

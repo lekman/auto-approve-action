@@ -313,6 +313,12 @@ main() {
     export VALIDATED_CHECKS_TOTAL="$ALL_CHECKS"
     export VALIDATED_CHECKS_PASSED="$PASSED_CHECKS"
     
+    # Make available for subsequent steps via GITHUB_ENV
+    if [[ -n "${GITHUB_ENV:-}" ]]; then
+        echo "VALIDATED_CHECKS_TOTAL=$ALL_CHECKS" >> "$GITHUB_ENV"
+        echo "VALIDATED_CHECKS_PASSED=$PASSED_CHECKS" >> "$GITHUB_ENV"
+    fi
+    
     exit 0
 }
 

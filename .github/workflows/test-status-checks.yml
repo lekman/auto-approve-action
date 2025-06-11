@@ -13,7 +13,7 @@ on:
 permissions:
   contents: read
   pull-requests: read
-  checks: read
+  checks: write
 
 jobs:
   test-unit-tests:
