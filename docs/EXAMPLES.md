@@ -182,13 +182,11 @@ name: Auto Approve Release
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches:
-      - main
-      - 'release-please--branches--**'
 
 jobs:
   auto-approve:
     runs-on: ubuntu-latest
+    # Only run for PRs from release-please branches
     if: startsWith(github.head_ref, 'release-please--')
     steps:
       - uses: actions/checkout@v4

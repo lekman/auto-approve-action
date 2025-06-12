@@ -7,12 +7,11 @@ permissions:
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches:
-      - 'release-please-*'
 
 jobs:
   auto-approve:
     runs-on: ubuntu-latest
+    if: startsWith(github.head_ref, 'release-please--')
     steps:
       - name: Checkout
         uses: actions/checkout@v4

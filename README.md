@@ -120,12 +120,12 @@ name: Auto Approve Release Please PR
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches:
-      - 'release-please-*'
 
 jobs:
   auto-approve:
     runs-on: ubuntu-latest
+    # Only run for PRs from release-please branches
+    if: startsWith(github.head_ref, 'release-please--')
     steps:
       - name: Auto Approve Release PR
         uses: lekman/auto-approve-action@v1
