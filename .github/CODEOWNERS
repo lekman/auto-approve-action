@@ -1,2 +1,8 @@
+# CODEOWNERS for auto-approve-action
+
+# Default owner for all files
 * @lekman
-*    @Lekman-Release-Please-Bot
+
+# Release-related files owned by the release bot
+/CHANGELOG.md @app/lekman-release-please-bot
+/.github/release-manifest.json @app/lekman-release-please-bot

@@ -93,6 +93,45 @@ path-filters: '**/*,!.github/**/*,!scripts/**/*.sh,!**/security/**'
 label-match-mode: 'none'
 ```
 
+**Release Please Automation:**
+```yaml
+# .github/workflows/approve-release.yml
+name: Auto Approve Release Please PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - 'release-please-*'
+
+jobs:
+  auto-approve:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto Approve Release PR
+        uses: lekman/auto-approve-action@main
+        with:
+          github-token: ${{ secrets.CODE_OWNER_TOKEN }}
+          allowed-authors: 'app/release-please-bot'
+          required-labels: 'autorelease: pending'
+          label-match-mode: 'all'
+          wait-for-checks: true
+          max-wait-time: '10'
+          # Only allow changes to release files
+          path-filters: '.github/release-manifest.json,**/CHANGELOG.md,CHANGELOG.md'
+```
+
+This configuration works best when combined with a CODEOWNERS file:
+```
+# .github/CODEOWNERS
+# Default owner for all files
+* @your-team
+
+# Release files can be approved by the bot
+/CHANGELOG.md @app/release-please-bot
+/.github/release-manifest.json @app/release-please-bot
+```
+
 ## Configuration Reference
 
 ### Inputs

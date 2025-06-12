@@ -16,26 +16,26 @@ log_error() {
 # Function to log warnings with timestamp
 log_warning() {
     local timestamp=$(get_timestamp)
-    echo "⚠️  [$timestamp] $1"
+    echo "⚠️  [$timestamp] $1" >&2
 }
 
 # Function to log info with timestamp
 log_info() {
     local timestamp=$(get_timestamp)
-    echo "ℹ️  [$timestamp] $1"
+    echo "ℹ️  [$timestamp] $1" >&2
 }
 
 # Function to log success with timestamp
 log_success() {
     local timestamp=$(get_timestamp)
-    echo "✅ [$timestamp] $1"
+    echo "✅ [$timestamp] $1" >&2
 }
 
 # Function to log debug messages (only if DEBUG is set)
 log_debug() {
     if [[ "${DEBUG:-false}" == "true" ]]; then
         local timestamp=$(get_timestamp)
-        echo "🔍 [$timestamp] [DEBUG] $1"
+        echo "🔍 [$timestamp] [DEBUG] $1" >&2
     fi
 }
 

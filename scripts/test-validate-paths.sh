@@ -7,6 +7,10 @@ set -euo pipefail
 # Unset any gh alias that might interfere with our tests
 unalias gh 2>/dev/null || true
 
+# Get the directory of this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VALIDATE_PATHS_SCRIPT="$SCRIPT_DIR/validate-paths.sh"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -125,7 +129,7 @@ cleanup_test_env() {
 test_start "Basic inclusion pattern - docs files"
 setup_test_env "docs/**/*.md"
 export PR_NUMBER="123"
-if ./scripts/validate-paths.sh > /dev/null 2>&1; then
+if "$VALIDATE_PATHS_SCRIPT" > /dev/null 2>&1; then
     test_pass "Correctly matched docs files"
 else
     test_fail "Failed to match docs files" "exit 0" "exit 1"
@@ -136,7 +140,7 @@ cleanup_test_env
 test_start "Multiple inclusion patterns"
 setup_test_env "docs/**/*.md,src/**/*.js"
 export PR_NUMBER="123"
-if ./scripts/validate-paths.sh > /dev/null 2>&1; then
+if "$VALIDATE_PATHS_SCRIPT" > /dev/null 2>&1; then
     test_pass "Correctly matched multiple patterns"
 else
     test_fail "Failed to match multiple patterns" "exit 0" "exit 1"
@@ -147,7 +151,7 @@ cleanup_test_env
 test_start "Exclusion pattern - reject test files"
 setup_test_env "**/*.js,!tests/**/*.js"
 export PR_NUMBER="123"
-if ./scripts/validate-paths.sh > /dev/null 2>&1; then
+if "$VALIDATE_PATHS_SCRIPT" > /dev/null 2>&1; then
     test_pass "Correctly excluded test files"
 else
     test_fail "Failed to exclude test files" "exit 0" "exit 1"
@@ -158,7 +162,7 @@ cleanup_test_env
 test_start "No matching files"
 setup_test_env "*.py"
 export PR_NUMBER="123"
-if ./scripts/validate-paths.sh > /dev/null 2>&1; then
+if "$VALIDATE_PATHS_SCRIPT" > /dev/null 2>&1; then
     test_fail "Should have failed with no matching files" "exit 1" "exit 0"
 else
     test_pass "Correctly failed with no matching files"
@@ -169,7 +173,7 @@ cleanup_test_env
 test_start "All files excluded"
 setup_test_env "!**/*"
 export PR_NUMBER="123"
-if ./scripts/validate-paths.sh > /dev/null 2>&1; then
+if "$VALIDATE_PATHS_SCRIPT" > /dev/null 2>&1; then
     test_fail "Should have failed with all files excluded" "exit 1" "exit 0"
 else
     test_pass "Correctly failed with all files excluded"
@@ -180,7 +184,7 @@ cleanup_test_env
 test_start "Only docs files allowed"
 setup_test_env "docs/**/*"
 export PR_NUMBER="124"
-if ./scripts/validate-paths.sh > /dev/null 2>&1; then
+if "$VALIDATE_PATHS_SCRIPT" > /dev/null 2>&1; then
     test_pass "Correctly approved PR with only docs files"
 else
     test_fail "Failed to approve PR with only docs files" "exit 0" "exit 1"
@@ -191,7 +195,7 @@ cleanup_test_env
 test_start "Complex pattern with specific extensions"
 setup_test_env "**/*.yml,**/*.json"
 export PR_NUMBER="125"
-if ./scripts/validate-paths.sh > /dev/null 2>&1; then
+if "$VALIDATE_PATHS_SCRIPT" > /dev/null 2>&1; then
     test_pass "Correctly matched config files"
 else
     test_fail "Failed to match config files" "exit 0" "exit 1"
@@ -202,7 +206,7 @@ cleanup_test_env
 test_start "Empty PR with no files"
 setup_test_env "**/*.md"
 export PR_NUMBER="126"
-if ./scripts/validate-paths.sh > /dev/null 2>&1; then
+if "$VALIDATE_PATHS_SCRIPT" > /dev/null 2>&1; then
     test_pass "Correctly handled empty PR"
 else
     test_fail "Failed to handle empty PR" "exit 0" "exit 1"
@@ -213,7 +217,7 @@ cleanup_test_env
 test_start "Patterns with whitespace"
 setup_test_env " docs/**/*.md , src/**/*.js "
 export PR_NUMBER="123"
-if ./scripts/validate-paths.sh > /dev/null 2>&1; then
+if "$VALIDATE_PATHS_SCRIPT" > /dev/null 2>&1; then
     test_pass "Correctly handled patterns with whitespace"
 else
     test_fail "Failed to handle patterns with whitespace" "exit 0" "exit 1"
@@ -224,7 +228,7 @@ cleanup_test_env
 test_start "Mixed inclusion and exclusion patterns"
 setup_test_env "**/*,!**/*.md"
 export PR_NUMBER="123"
-if ./scripts/validate-paths.sh > /dev/null 2>&1; then
+if "$VALIDATE_PATHS_SCRIPT" > /dev/null 2>&1; then
     test_pass "Correctly handled mixed patterns"
 else
     test_fail "Failed to handle mixed patterns" "exit 0" "exit 1"
@@ -235,7 +239,7 @@ cleanup_test_env
 test_start "Single file pattern"
 setup_test_env "package.json"
 export PR_NUMBER="125"
-if ./scripts/validate-paths.sh > /dev/null 2>&1; then
+if "$VALIDATE_PATHS_SCRIPT" > /dev/null 2>&1; then
     test_pass "Correctly matched single file"
 else
     test_fail "Failed to match single file" "exit 0" "exit 1"
@@ -246,7 +250,7 @@ cleanup_test_env
 test_start "Pattern with single asterisk"
 setup_test_env "src/*.js"
 export PR_NUMBER="123"
-if ./scripts/validate-paths.sh > /dev/null 2>&1; then
+if "$VALIDATE_PATHS_SCRIPT" > /dev/null 2>&1; then
     test_pass "Correctly matched src/*.js pattern"
 else
     test_fail "Failed to match src/*.js pattern" "exit 0" "exit 1"
@@ -257,7 +261,7 @@ cleanup_test_env
 test_start "Invalid pattern characters warning"
 setup_test_env "[docs]/**/*.md"
 export PR_NUMBER="123"
-OUTPUT=$(./scripts/validate-paths.sh 2>&1 || true)
+OUTPUT=$("$VALIDATE_PATHS_SCRIPT" 2>&1 || true)
 if echo "$OUTPUT" | grep -q "may not work as expected"; then
     test_pass "Correctly warned about invalid pattern characters"
 else

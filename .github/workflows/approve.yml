@@ -23,11 +23,12 @@ jobs:
         uses: ./
         with:
           github-token: ${{ secrets.CODE_OWNER_TOKEN }}
-          allowed-authors: "Lekman-Release-Please-Bot[bot]"
+          allowed-authors: "app/lekman-release-please-bot"
           required-labels: "autorelease: pending"
           label-match-mode: "all"
           wait-for-checks: true
           max-wait-time: "10"
+          path-filters: ".github/release-manifest.json,**/CHANGELOG.md,CHANGELOG.md"
           
       - name: Check approval result
         if: always()

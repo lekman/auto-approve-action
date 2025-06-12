@@ -16,8 +16,8 @@ get_changed_files() {
     
     local files_json
     log_debug "Running: gh pr view $pr_number --json files"
-    if ! files_json=$(gh pr view "$pr_number" --json files 2>&1); then
-        log_error "Failed to fetch PR file information: $files_json"
+    if ! files_json=$(gh pr view "$pr_number" --json files); then
+        log_error "Failed to fetch PR file information"
         return 1
     fi
     log_debug "Got files JSON: $files_json"
@@ -100,11 +100,18 @@ validate_paths() {
     fi
     
     # Count changed files
-    local file_count=$(echo "$changed_files" | grep -c . || echo 0)
+    local file_count=0
+    if [[ -n "$changed_files" ]]; then
+        file_count=$(echo "$changed_files" | grep -c . || echo 0)
+    fi
     log_info "Found $file_count changed file(s) in PR #$pr_number"
     
     if [[ $file_count -eq 0 ]]; then
         log_warning "No files changed in PR"
+        export VALIDATED_PATH_STATUS="approved"
+        export VALIDATED_PATH_REASON="No files changed - auto-approved"
+        export VALIDATED_MATCHED_FILES="0"
+        export VALIDATED_EXCLUDED_FILES="0"
         return 0
     fi
     
@@ -126,6 +133,12 @@ validate_paths() {
             exclude_patterns+=("${filter:1}")
         else
             # Inclusion pattern
+            # Check for invalid pattern characters and warn
+            if [[ "$filter" == *"["* ]] || [[ "$filter" == *"]"* ]] || \
+               [[ "$filter" == *"("* ]] || [[ "$filter" == *")"* ]] || \
+               [[ "$filter" == *"{"* ]] || [[ "$filter" == *"}"* ]]; then
+                log_warning "Pattern contains special characters that may not work as expected: $filter"
+            fi
             include_patterns+=("$filter")
         fi
     done
@@ -147,16 +160,18 @@ validate_paths() {
         local excluded=false
         
         # Check exclusion patterns first
-        for pattern in "${exclude_patterns[@]}"; do
-            if matches_pattern "$file" "$pattern"; then
-                excluded=true
-                excluded_files+=("$file")
-                log_info "File '$file' matches exclusion pattern '$pattern'"
-                break
-            fi
-        done
+        if [[ ${#exclude_patterns[@]} -gt 0 ]]; then
+            for pattern in "${exclude_patterns[@]}"; do
+                if matches_pattern "$file" "$pattern"; then
+                    excluded=true
+                    excluded_files+=("$file")
+                    log_info "File '$file' matches exclusion pattern '$pattern'"
+                    break
+                fi
+            done
+        fi
         
-        # If excluded, skip inclusion check
+        # If excluded, skip this file entirely (don't check inclusion)
         if [[ "$excluded" == "true" ]]; then
             continue
         fi
@@ -185,21 +200,38 @@ validate_paths() {
     local approval_status="approved"
     local status_reason=""
     
-    # If any files are excluded, fail
-    if [[ ${#excluded_files[@]} -gt 0 ]]; then
-        approval_status="rejected"
-        status_reason="PR contains files matching exclusion patterns"
-        log_error "PR contains ${#excluded_files[@]} file(s) matching exclusion patterns"
-        for file in "${excluded_files[@]}"; do
-            log_error "  - $file"
-        done
+    # Calculate effective file count (total minus excluded)
+    local effective_files=$((file_count - ${#excluded_files[@]}))
+    
+    # If we have only exclude patterns (no include patterns)
+    if [[ ${#include_patterns[@]} -eq 0 && ${#exclude_patterns[@]} -gt 0 ]]; then
+        # Check if all files were excluded
+        if [[ $effective_files -eq 0 ]]; then
+            approval_status="rejected"
+            status_reason="All files in PR match exclusion patterns"
+            log_error "All files in PR match exclusion patterns"
+        else
+            # Some files remain after exclusion
+            status_reason="Files remain after applying exclusion patterns"
+        fi
+    # If we have include patterns
+    elif [[ ${#include_patterns[@]} -gt 0 ]]; then
+        # Check if any files matched the include patterns (after exclusions)
+        if [[ ${#matched_files[@]} -eq 0 ]]; then
+            approval_status="rejected"
+            status_reason="No files match the required inclusion patterns"
+            log_error "No files in PR match the required patterns"
+        else
+            status_reason="Files match required patterns"
+        fi
     fi
     
-    # If inclusion patterns are specified and no files match, fail
-    if [[ "$approval_status" == "approved" && ${#include_patterns[@]} -gt 0 && ${#matched_files[@]} -eq 0 ]]; then
-        approval_status="rejected"
-        status_reason="No files match the required inclusion patterns"
-        log_error "No files in PR match the required patterns"
+    # Log excluded files if any (for information only)
+    if [[ ${#excluded_files[@]} -gt 0 ]]; then
+        log_info "Excluded ${#excluded_files[@]} file(s) based on exclusion patterns:"
+        for file in "${excluded_files[@]}"; do
+            log_info "  - $file"
+        done
     fi
     
     # Log summary
