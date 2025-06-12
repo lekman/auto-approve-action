@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.2.0...auto-approve-action@v1.2.1) (2025-06-12)
+
+
+### Bug Fixes
+
+* update permissions docs for Auto Approve Release Please PR workflow ([50381ec](https://github.com/lekman/auto-approve-action/commit/50381eced27059671e674d3a706790541c6a6874))
+
 ## [1.2.0](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.1.0...auto-approve-action@v1.2.0) (2025-06-12)
 
 
