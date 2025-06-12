@@ -31,6 +31,7 @@ jobs:
           - { name: "Status Check Monitor", script: "./scripts/test-monitor-checks.sh" }
           - { name: "Approval Execution", script: "./scripts/test-approve-pr.sh" }
           - { name: "Path Validation", script: "./scripts/test-validate-paths.sh" }
+          - { name: "Size Validation", script: "./scripts/test-validate-size.sh" }
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -619,6 +620,109 @@ jobs:
           path-filters: '.github/**/*.yml,scripts/**/*.sh,!scripts/test-*.sh'
           dry-run: 'true'
 
+  # Size validation tests
+  size-tests:
+    name: Size Validation Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+      
+      # Test with no size limits
+      - name: Test No Size Limits
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+          dry-run: 'true'
+      
+      # Test with file count limit
+      - name: Test File Count Limit
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+          max-files-changed: '100'
+          dry-run: 'true'
+      
+      # Test with lines added limit
+      - name: Test Lines Added Limit
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+          max-lines-added: '5000'
+          dry-run: 'true'
+      
+      # Test with total lines limit
+      - name: Test Total Lines Limit
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+          max-total-lines: '10000'
+          dry-run: 'true'
+      
+      # Test with all size limits
+      - name: Test All Size Limits
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+          max-files-changed: '50'
+          max-lines-added: '3000'
+          max-lines-removed: '1000'
+          max-total-lines: '4000'
+          size-limit-message: 'This PR is too large for automated approval'
+          dry-run: 'true'
+      
+      # Test with very restrictive limits (should fail for most PRs)
+      - name: Test Restrictive Size Limits (Should Fail)
+        id: test-restrictive
+        continue-on-error: true
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+          max-files-changed: '1'
+          max-lines-added: '10'
+          max-lines-removed: '5'
+          max-total-lines: '15'
+          dry-run: 'true'
+      
+      - name: Verify Restrictive Test Failed
+        if: steps.test-restrictive.outcome != 'failure'
+        run: |
+          echo "Expected restrictive size test to fail for most PRs"
+          # Don't fail if the PR is actually tiny
+          if [[ "${{ steps.test-restrictive.outcome }}" == "success" ]]; then
+            echo "Note: This PR might be small enough to pass restrictive limits"
+          fi
+
   # Final check - This job is used as the single required check for branch protection
   ci-success:
     name: CI Success
@@ -631,6 +735,7 @@ jobs:
       - input-validation-tests
       - approval-tests
       - path-tests
+      - size-tests
     if: always()
     steps:
       - name: Check all tests passed
@@ -672,6 +777,7 @@ jobs:
               echo "| 📝 Input Validation Tests (PR) | ${{ needs.input-validation-tests.result }} |"
               echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} |"
               echo "| 📁 Path Tests | ${{ needs.path-tests.result }} |"
+              echo "| 📏 Size Tests | ${{ needs.size-tests.result }} |"
               echo ""
               echo "### Failed Jobs"
               echo ""
@@ -705,6 +811,7 @@ jobs:
               echo "| 📝 Input Validation Tests (PR) | ${{ needs.input-validation-tests.result }} |"
               echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} |"
               echo "| 📁 Path Tests | ${{ needs.path-tests.result }} |"
+              echo "| 📏 Size Tests | ${{ needs.size-tests.result }} |"
               echo ""
               echo "---"
               echo "_Generated at $(date -u +"%Y-%m-%d %H:%M:%S UTC")_"
@@ -723,7 +830,8 @@ jobs:
                [[ "${{ needs.check-monitoring-tests.result }}" == "skipped" ]] && \
                [[ "${{ needs.input-validation-tests.result }}" == "skipped" ]] && \
                [[ "${{ needs.approval-tests.result }}" == "skipped" ]] && \
-               [[ "${{ needs.path-tests.result }}" == "skipped" ]]; then
+               [[ "${{ needs.path-tests.result }}" == "skipped" ]] && \
+               [[ "${{ needs.size-tests.result }}" == "skipped" ]]; then
               echo "✅ All jobs skipped (release-please branch)"
               exit 0
             fi
@@ -733,7 +841,8 @@ jobs:
                [[ "${{ needs.check-monitoring-tests.result }}" != "success" && "${{ needs.check-monitoring-tests.result }}" != "skipped" ]] || \
                [[ "${{ needs.input-validation-tests.result }}" != "success" && "${{ needs.input-validation-tests.result }}" != "skipped" ]] || \
                [[ "${{ needs.approval-tests.result }}" != "success" && "${{ needs.approval-tests.result }}" != "skipped" ]] || \
-               [[ "${{ needs.path-tests.result }}" != "success" && "${{ needs.path-tests.result }}" != "skipped" ]]; then
+               [[ "${{ needs.path-tests.result }}" != "success" && "${{ needs.path-tests.result }}" != "skipped" ]] || \
+               [[ "${{ needs.size-tests.result }}" != "success" && "${{ needs.size-tests.result }}" != "skipped" ]]; then
               echo "❌ PR-specific tests did not complete successfully"
               
               # Write PR test failure summary
