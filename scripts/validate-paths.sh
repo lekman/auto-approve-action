@@ -50,15 +50,30 @@ matches_pattern() {
     regex_pattern="${regex_pattern//+/\\+}"
     regex_pattern="${regex_pattern//\?/\\?}"
     
-    # Special handling for /**/ pattern (matches zero or more path segments)
-    # This allows docs/**/*.md to match both docs/README.md and docs/subdir/file.md
-    regex_pattern="${regex_pattern//\/\*\*\//\/(.*\/)?}"
-    
-    # Handle remaining ** (at start or end)
-    regex_pattern="${regex_pattern//\*\*/.*}"
-    
-    # Replace single * with [^/]* (matches any character except /)
-    regex_pattern="${regex_pattern//\*/[^/]*}"
+    # Handle ** patterns
+    # Special case: **/* should match everything
+    if [[ "$pattern" == "**/*" ]]; then
+        regex_pattern=".*"
+    else
+        # First, handle /**/ in the middle (matches zero or more path segments)
+        # This needs to match both "dir/**/*.ext" -> "dir/*.ext" and "dir/sub/*.ext"
+        regex_pattern="${regex_pattern//\/\*\*\//\/(STARSTAR\/)?}"
+        
+        # Handle /** at the end
+        regex_pattern="${regex_pattern//\/\*\*/\/STARSTAR}"
+        
+        # Handle **/ at the beginning (matches any number of directories)
+        regex_pattern="${regex_pattern//\*\*\//STARSTAR/}"
+        
+        # Handle standalone **
+        regex_pattern="${regex_pattern//\*\*/STARSTAR}"
+        
+        # Replace single * with [^/]* (matches any character except /)
+        regex_pattern="${regex_pattern//\*/[^/]*}"
+        
+        # Now replace STARSTAR with .* (matches anything including /)
+        regex_pattern="${regex_pattern//STARSTAR/.*}"
+    fi
     
     # Anchor the pattern
     regex_pattern="^${regex_pattern}$"
