@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.0](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.1.0...auto-approve-action@v1.2.0) (2025-06-12)
+
+
+### Features
+
+* add PR size limits and validation for auto-approval action ([788af9e](https://github.com/lekman/auto-approve-action/commit/788af9e881054fc714ea538c8e7d35b9008ebd13))
+* restrict auto-approval action to PRs from release-please branches ([a1a57e7](https://github.com/lekman/auto-approve-action/commit/a1a57e7ba5899b83bfd4bf5ecd66470a63fa8c16))
+
+
+### Bug Fixes
+
+* increase size limits in CI tests to accommodate PR size ([4bfbe22](https://github.com/lekman/auto-approve-action/commit/4bfbe22bb796305faf30e44cca2020782adab290))
+* update auto-merge command to use --auto flag ([c65f58a](https://github.com/lekman/auto-approve-action/commit/c65f58a5ed8a8ba2788115d5c4daee0a11c909a2))
+* update path filters and increase max lines removed in CI workflow ([e60eb80](https://github.com/lekman/auto-approve-action/commit/e60eb8003e7a9db715cd6c38d68593bfb2af6687))
+
 ## [1.1.0](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.0.0...auto-approve-action@v1.1.0) (2025-06-12)
 
 
