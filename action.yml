@@ -1,4 +1,4 @@
-name: Auto Approve PR
+name: Auto Approve Pull Requests
 description: Auto-approve PRs based on allow list, label requirements, and status check verification
 inputs:
   github-token:
