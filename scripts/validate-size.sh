@@ -15,8 +15,8 @@ get_pr_stats() {
     log_info "Fetching PR statistics for PR #$pr_number..."
     
     local pr_stats
-    log_debug "Running: gh pr view $pr_number --json additions,deletions,changedFiles"
-    if ! pr_stats=$(gh pr view "$pr_number" --json additions,deletions,changedFiles); then
+    log_debug "Running: gh pr view $pr_number --json additions,deletions,changedFiles --repo $GITHUB_REPOSITORY"
+    if ! pr_stats=$(gh pr view "$pr_number" --json additions,deletions,changedFiles --repo "$GITHUB_REPOSITORY"); then
         log_error "Failed to fetch PR statistics"
         return 1
     fi

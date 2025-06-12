@@ -15,8 +15,8 @@ get_changed_files() {
     log_info "Fetching list of changed files for PR #$pr_number..."
     
     local files_json
-    log_debug "Running: gh pr view $pr_number --json files"
-    if ! files_json=$(gh pr view "$pr_number" --json files); then
+    log_debug "Running: gh pr view $pr_number --json files --repo $GITHUB_REPOSITORY"
+    if ! files_json=$(gh pr view "$pr_number" --json files --repo "$GITHUB_REPOSITORY"); then
         log_error "Failed to fetch PR file information"
         return 1
     fi

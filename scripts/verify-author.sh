@@ -17,7 +17,7 @@ get_pr_author() {
     # Use GitHub CLI to get PR author
     # The --json flag returns structured data we can parse
     local pr_data
-    if ! pr_data=$(gh pr view "$pr_number" --json author 2>&1); then
+    if ! pr_data=$(gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY" --json author 2>&1); then
         log_error "Failed to retrieve PR information: $pr_data"
         return 1
     fi

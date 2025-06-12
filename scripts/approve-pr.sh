@@ -13,7 +13,7 @@ verify_token_permissions() {
     local pr_number="$1"
     
     # Check if we can access the PR with the token
-    if ! gh pr view "$pr_number" --json number >/dev/null 2>&1; then
+    if ! gh pr view "$pr_number" --json number --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
         log_error "Unable to access PR #$pr_number - check GITHUB_TOKEN permissions"
         return 1
     fi
@@ -105,7 +105,7 @@ check_existing_approval() {
     
     # Check existing reviews
     local existing_approvals
-    if ! existing_approvals=$(gh pr view "$pr_number" --json reviews --jq ".reviews[] | select(.author.login == \"$current_user\" and .state == \"APPROVED\") | .id" 2>&1); then
+    if ! existing_approvals=$(gh pr view "$pr_number" --json reviews --repo "$GITHUB_REPOSITORY" --jq ".reviews[] | select(.author.login == \"$current_user\" and .state == \"APPROVED\") | .id" 2>&1); then
         log_error "Failed to check existing reviews: $existing_approvals"
         return 1
     fi
@@ -171,7 +171,7 @@ add_approval_comment() {
     comment+="*Automatically approved by the Auto-Approve GitHub Action at $(date -u +"%Y-%m-%d %H:%M:%S UTC")*"
     
     # Submit the comment
-    if ! result=$(gh pr comment "$pr_number" --body "$comment" 2>&1); then
+    if ! result=$(gh pr comment "$pr_number" --body "$comment" --repo "$GITHUB_REPOSITORY" 2>&1); then
         log_error "Failed to add approval comment: $result"
         return 1
     fi
@@ -187,7 +187,7 @@ approve_pr() {
     log_info "Submitting approval for PR #$pr_number..."
     
     # Submit approval review without comment
-    if ! result=$(gh pr review "$pr_number" --approve 2>&1); then
+    if ! result=$(gh pr review "$pr_number" --approve --repo "$GITHUB_REPOSITORY" 2>&1); then
         log_error "Failed to approve PR: $result"
         return 1
     fi
@@ -214,7 +214,7 @@ enable_auto_merge() {
     esac
     
     # Enable auto-merge using the specified method
-    if ! result=$(gh pr merge "$pr_number" --auto --$merge_method 2>&1); then
+    if ! result=$(gh pr merge "$pr_number" --auto --$merge_method --repo "$GITHUB_REPOSITORY" 2>&1); then
         log_error "Failed to enable auto-merge: $result"
         return 1
     fi

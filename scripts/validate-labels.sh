@@ -27,7 +27,7 @@ get_pr_labels() {
     
     # Use GitHub CLI to get PR labels
     local pr_data
-    if ! pr_data=$(gh pr view "$pr_number" --json labels 2>&1); then
+    if ! pr_data=$(gh pr view "$pr_number" --json labels --repo "$GITHUB_REPOSITORY" 2>&1); then
         log_error "Failed to retrieve PR labels: $pr_data"
         return 1
     fi
