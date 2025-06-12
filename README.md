@@ -8,7 +8,6 @@ Key features include:
 - **Flexible Configuration** - Customizable approval criteria for different workflow scenarios
 - **Audit Trails** - Detailed logging and approval decision documentation
 - **Composite Action Architecture** - Reusable across multiple repositories and teams
-- **Smart Check Monitoring** - Intelligent waiting for CI/CD pipeline completion with configurable timeouts
 - **GitHub App/PAT Support** - Secure token-based authentication with code owner privileges
 
 ## Usage
@@ -17,6 +16,7 @@ Key features include:
 - A GitHub Personal Access Token (PAT) or GitHub App token with `repo` and `pull_requests:write` permissions
 - Code owner privileges or admin access for the token owner
 - Existing CI/CD workflows for status check validation
+- **Repository Settings**: If using auto-merge, ensure "Allow auto-merge" is enabled in your repository settings (Settings → General → Pull Requests)
 
 ### Basic Setup:
 
@@ -46,8 +46,6 @@ Key features include:
              allowed-authors: "dependabot[bot], renovate[bot], trusted-dev"
              required-labels: "auto-approve, dependencies"
              label-match-mode: "any"
-             wait-for-checks: true
-             max-wait-time: 30
    ```
 
 3. **Configure your approval criteria**:
@@ -76,7 +74,6 @@ label-match-mode: 'any'
 allowed-authors: 'senior-dev-1, on-call-engineer'
 required-labels: 'hotfix, emergency'
 label-match-mode: 'any'
-max-wait-time: '10'
 ```
 
 **Path-Based Approval for Documentation:**
@@ -134,8 +131,6 @@ jobs:
           allowed-authors: 'app/release-please-bot'
           required-labels: 'autorelease: pending'
           label-match-mode: 'all'
-          wait-for-checks: true
-          max-wait-time: '10'
           # Only allow changes to release files
           path-filters: '.github/release-manifest.json,**/CHANGELOG.md,CHANGELOG.md'
 ```
@@ -161,9 +156,6 @@ This configuration works best when combined with a CODEOWNERS file:
 | `allowed-authors` | ✅ | - | Comma-separated list of GitHub usernames allowed for auto-approval |
 | `required-labels` | ❌ | `''` | Comma-separated list of required PR labels |
 | `label-match-mode` | ❌ | `'all'` | How to match labels: `all`, `any`, or `none` |
-| `wait-for-checks` | ❌ | `'false'` | Whether to wait for status checks to complete |
-| `required-checks` | ❌ | `''` | Specific check names to wait for (optional) |
-| `max-wait-time` | ❌ | `'30'` | Maximum wait time for checks in minutes |
 | `silent` | ❌ | `'false'` | Suppress job summary output |
 | `dry-run` | ❌ | `'false'` | Test mode - performs all checks but skips actual approval |
 | `merge-method` | ❌ | `'merge'` | Auto-merge method: `merge`, `squash`, or `rebase` |
@@ -181,7 +173,7 @@ This configuration works best when combined with a CODEOWNERS file:
 | `approved` | Whether the PR was successfully approved |
 | `author-allowed` | Whether the PR author is in the allowed list |
 | `labels-match` | Whether the PR labels meet requirements |
-| `checks-status` | Final status of the required checks |
+| `paths-match` | Whether the PR file paths meet requirements |
 
 ## Security Considerations
 
@@ -196,6 +188,10 @@ This configuration works best when combined with a CODEOWNERS file:
 - **Use label requirements** for additional manual control gates
 - **Enable branch protection** rules to enforce review requirements
 - **Monitor approval patterns** for unusual or suspicious activity
+- **Configure repository settings** appropriately:
+  - Enable "Allow auto-merge" to enable auto-approval for PRs
+  - Set up branch protection rules to require status checks before merging
+  - Consider requiring PR reviews from code owners for sensitive paths
 
 ### Compliance & Audit
 - **Review audit logs** regularly for unauthorized approval attempts

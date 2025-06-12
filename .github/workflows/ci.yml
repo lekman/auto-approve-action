@@ -28,7 +28,6 @@ jobs:
           - { name: "Input Validation", script: "./scripts/test-validate-inputs.sh" }
           - { name: "Author Verification", script: "./scripts/test-verify-author.sh" }
           - { name: "Label Validation", script: "./scripts/test-validate-labels.sh" }
-          - { name: "Status Check Monitor", script: "./scripts/test-monitor-checks.sh" }
           - { name: "Approval Execution", script: "./scripts/test-approve-pr.sh" }
           - { name: "Path Validation", script: "./scripts/test-validate-paths.sh" }
           - { name: "Size Validation", script: "./scripts/test-validate-size.sh" }
@@ -77,14 +76,13 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           repositories: ${{ github.event.repository.name }}
       
-      # Test basic approval without checks
-      - name: Test Basic Approval (No Checks)
+      # Test basic approval
+      - name: Test Basic Approval
         uses: ./
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
-          wait-for-checks: 'false'
           dry-run: 'true'
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -98,7 +96,6 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: 'definitely-not-the-pr-author'
           label-match-mode: 'none'
-          wait-for-checks: 'false'
           dry-run: 'true'
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -116,7 +113,6 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: '${{ github.actor }},dependabot[bot],renovate[bot]'
           label-match-mode: 'none'
-          wait-for-checks: 'false'
           dry-run: 'true'
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -128,7 +124,6 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: 'user1,user2,${{ github.actor }},user3'
           label-match-mode: 'none'
-          wait-for-checks: 'false'
           dry-run: 'true'
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -161,7 +156,6 @@ jobs:
           allowed-authors: ${{ github.actor }}
           required-labels: 'do-not-merge,wip,blocked'
           label-match-mode: 'none'
-          wait-for-checks: 'false'
           dry-run: 'true'
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -175,7 +169,6 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'any'
-          wait-for-checks: 'false'
           dry-run: 'true'
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -196,7 +189,6 @@ jobs:
           allowed-authors: ${{ github.actor }}
           required-labels: 'test-label,approved,ready'
           label-match-mode: 'all'
-          wait-for-checks: 'false'
           dry-run: 'true'
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -206,156 +198,6 @@ jobs:
         run: |
           echo "Expected mode 'all' to fail when not all labels are present"
           exit 1
-
-  # Status check monitoring tests
-  check-monitoring-tests:
-    name: Status Check Monitoring Tests
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')
-    permissions:
-      contents: read
-      pull-requests: write
-      checks: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Get GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-          repositories: ${{ github.event.repository.name }}
-      
-      # Test with checks disabled
-      - name: Test with Check Waiting Disabled
-        uses: ./
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          allowed-authors: ${{ github.actor }}
-          label-match-mode: 'none'
-          wait-for-checks: 'false'
-          dry-run: 'true'
-      
-      # Create and wait for a specific check
-      - name: Create Test Check
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          script: |
-            try {
-              const { data: pr } = await github.rest.pulls.get({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: context.issue.number
-              });
-              
-              const { data: check } = await github.rest.checks.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                name: 'CI Test Check',
-                head_sha: pr.head.sha,
-                status: 'in_progress'
-              });
-              
-              // Complete it after a short delay
-              await new Promise(resolve => setTimeout(resolve, 2000));
-              
-              await github.rest.checks.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                check_run_id: check.id,
-                status: 'completed',
-                conclusion: 'success'
-              });
-            } catch (error) {
-              // If we can't create checks, skip this test
-              console.log('Cannot create check runs with current token:', error.message);
-              console.log('Skipping check creation test - requires GitHub App with checks:write permission');
-            }
-      
-      - name: Test Waiting for Specific Check
-        id: test-specific-check
-        continue-on-error: true
-        uses: ./
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          allowed-authors: ${{ github.actor }}
-          label-match-mode: 'none'
-          wait-for-checks: 'true'
-          max-wait-time: '5'
-          required-checks: 'CI Test Check'
-          dry-run: 'true'
-      
-      # Test timeout scenario
-      - name: Test Timeout (Should Fail)
-        id: test-timeout
-        continue-on-error: true
-        uses: ./
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          allowed-authors: ${{ github.actor }}
-          label-match-mode: 'none'
-          wait-for-checks: 'true'
-          max-wait-time: '0.1'
-          required-checks: 'Non-Existent-Check'
-          dry-run: 'true'
-      
-      - name: Verify Timeout Occurred
-        if: steps.test-timeout.outcome != 'failure'
-        run: |
-          echo "Expected timeout test to fail"
-          exit 1
-      
-      # Test failed check rejection
-      - name: Create Failing Check
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          script: |
-            try {
-              const { data: pr } = await github.rest.pulls.get({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: context.issue.number
-              });
-              
-              await github.rest.checks.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                name: 'CI Failed Check',
-                head_sha: pr.head.sha,
-                status: 'completed',
-                conclusion: 'failure'
-              });
-            } catch (error) {
-              // If we can't create checks, skip this test
-              console.log('Cannot create check runs with current token:', error.message);
-              console.log('Skipping failed check test - requires GitHub App with checks:write permission');
-            }
-      
-      - name: Test Failed Check Rejection (Should Fail)
-        id: test-failed-check
-        continue-on-error: true
-        uses: ./
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          allowed-authors: ${{ github.actor }}
-          label-match-mode: 'none'
-          wait-for-checks: 'true'
-          max-wait-time: '1'
-          required-checks: 'CI Failed Check'
-          dry-run: 'true'
-      
-      - name: Verify Failed Check Rejection
-        # Skip verification if we couldn't create the check
-        if: steps.test-failed-check.outcome != 'failure' && steps.test-failed-check.outcome != 'skipped'
-        run: |
-          echo "Expected action to fail due to failed check"
-          # Don't fail if we couldn't create the check in the first place
-          echo "Note: Test might have been skipped if check creation failed"
-
 
   # Input validation tests (for PR contexts)
   input-validation-tests:
@@ -384,7 +226,6 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: 'user1,user2,dependabot[bot],${{ github.actor }}'
           label-match-mode: 'none'
-          wait-for-checks: 'false'
           dry-run: 'true'
       
       - name: Test All Valid Inputs
@@ -392,10 +233,10 @@ jobs:
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: 'user1,user2,renovate[bot],${{ github.actor }}'
-          wait-for-checks: 'false'
-          max-wait-time: '60'
-          required-checks: 'CI Build,Unit Tests'
           label-match-mode: 'none'
+          merge-method: 'squash'
+          path-filters: 'src/**/*.js,tests/**/*.js'
+          max-files-changed: '50'
           dry-run: 'true'
       
       # Test invalid inputs
@@ -425,46 +266,18 @@ jobs:
         if: steps.test-invalid-mode.outcome != 'failure'
         run: exit 1
       
-      - name: Test Invalid Wait For Checks (Should Fail)
-        id: test-invalid-wait
+      - name: Test Invalid Merge Method (Should Fail)
+        id: test-invalid-merge
         continue-on-error: true
         uses: ./
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: 'user1'
-          wait-for-checks: 'yes'
+          merge-method: 'invalid'
           dry-run: 'true'
       
-      - name: Verify Invalid Wait Failed
-        if: steps.test-invalid-wait.outcome != 'failure'
-        run: exit 1
-      
-      - name: Test Negative Max Wait Time (Should Fail)
-        id: test-negative-time
-        continue-on-error: true
-        uses: ./
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          allowed-authors: 'user1'
-          max-wait-time: '-5'
-          dry-run: 'true'
-      
-      - name: Verify Negative Time Failed
-        if: steps.test-negative-time.outcome != 'failure'
-        run: exit 1
-      
-      - name: Test Excessive Max Wait Time (Should Fail)
-        id: test-excessive-time
-        continue-on-error: true
-        uses: ./
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          allowed-authors: 'user1'
-          max-wait-time: '500'
-          dry-run: 'true'
-      
-      - name: Verify Excessive Time Failed
-        if: steps.test-excessive-time.outcome != 'failure'
+      - name: Verify Invalid Merge Failed
+        if: steps.test-invalid-merge.outcome != 'failure'
         run: exit 1
 
   # Approval execution tests
@@ -494,7 +307,6 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
-          wait-for-checks: 'false'
           dry-run: 'true'
       
       # Test duplicate approval prevention
@@ -507,7 +319,6 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
-          wait-for-checks: 'false'
           dry-run: 'true'
       
       # Test with labels
@@ -553,7 +364,6 @@ jobs:
           allowed-authors: ${{ github.actor }}
           required-labels: 'ci-test'
           label-match-mode: 'any'
-          wait-for-checks: 'false'
           dry-run: 'true'
 
   # Path validation tests
@@ -583,7 +393,6 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
-          wait-for-checks: 'false'
           path-filters: '**/*'
           dry-run: 'true'
       
@@ -594,7 +403,6 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
-          wait-for-checks: 'false'
           path-filters: 'docs/**/*.md,README.md,*.md'
           dry-run: 'true'
       
@@ -605,7 +413,6 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
-          wait-for-checks: 'false'
           path-filters: '**/*,!tests/**/*,!**/*.test.js'
           dry-run: 'true'
       
@@ -616,7 +423,6 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
-          wait-for-checks: 'false'
           path-filters: '.github/**/*.yml,scripts/**/*.sh,!scripts/test-*.sh'
           dry-run: 'true'
 
@@ -647,7 +453,6 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
-          wait-for-checks: 'false'
           dry-run: 'true'
       
       # Test with file count limit
@@ -657,7 +462,6 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
-          wait-for-checks: 'false'
           max-files-changed: '100'
           dry-run: 'true'
       
@@ -668,7 +472,6 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
-          wait-for-checks: 'false'
           max-lines-added: '5000'
           dry-run: 'true'
       
@@ -679,7 +482,6 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
-          wait-for-checks: 'false'
           max-total-lines: '10000'
           dry-run: 'true'
       
@@ -690,7 +492,6 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
-          wait-for-checks: 'false'
           max-files-changed: '50'
           max-lines-added: '3000'
           max-lines-removed: '1000'
@@ -707,7 +508,6 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           allowed-authors: ${{ github.actor }}
           label-match-mode: 'none'
-          wait-for-checks: 'false'
           max-files-changed: '1'
           max-lines-added: '10'
           max-lines-removed: '5'
@@ -731,7 +531,6 @@ jobs:
       - unit-tests
       - integration-tests
       - label-tests
-      - check-monitoring-tests
       - input-validation-tests
       - approval-tests
       - path-tests
@@ -773,7 +572,6 @@ jobs:
               echo "| 🧪 Unit Tests (includes all script tests) | ${{ needs.unit-tests.result }} |"
               echo "| 🔗 Integration Tests | ${{ needs.integration-tests.result }} |"
               echo "| 🏷️ Label Tests | ${{ needs.label-tests.result }} |"
-              echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} |"
               echo "| 📝 Input Validation Tests (PR) | ${{ needs.input-validation-tests.result }} |"
               echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} |"
               echo "| 📁 Path Tests | ${{ needs.path-tests.result }} |"
@@ -807,7 +605,6 @@ jobs:
               echo "| 🧪 Unit Tests (includes all script tests) | ${{ needs.unit-tests.result }} |"
               echo "| 🔗 Integration Tests | ${{ needs.integration-tests.result }} |"
               echo "| 🏷️ Label Tests | ${{ needs.label-tests.result }} |"
-              echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} |"
               echo "| 📝 Input Validation Tests (PR) | ${{ needs.input-validation-tests.result }} |"
               echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} |"
               echo "| 📁 Path Tests | ${{ needs.path-tests.result }} |"
@@ -827,7 +624,6 @@ jobs:
             if [[ "${{ needs.unit-tests.result }}" == "skipped" ]] && \
                [[ "${{ needs.integration-tests.result }}" == "skipped" ]] && \
                [[ "${{ needs.label-tests.result }}" == "skipped" ]] && \
-               [[ "${{ needs.check-monitoring-tests.result }}" == "skipped" ]] && \
                [[ "${{ needs.input-validation-tests.result }}" == "skipped" ]] && \
                [[ "${{ needs.approval-tests.result }}" == "skipped" ]] && \
                [[ "${{ needs.path-tests.result }}" == "skipped" ]] && \
@@ -838,7 +634,6 @@ jobs:
             
             if [[ "${{ needs.integration-tests.result }}" != "success" && "${{ needs.integration-tests.result }}" != "skipped" ]] || \
                [[ "${{ needs.label-tests.result }}" != "success" && "${{ needs.label-tests.result }}" != "skipped" ]] || \
-               [[ "${{ needs.check-monitoring-tests.result }}" != "success" && "${{ needs.check-monitoring-tests.result }}" != "skipped" ]] || \
                [[ "${{ needs.input-validation-tests.result }}" != "success" && "${{ needs.input-validation-tests.result }}" != "skipped" ]] || \
                [[ "${{ needs.approval-tests.result }}" != "success" && "${{ needs.approval-tests.result }}" != "skipped" ]] || \
                [[ "${{ needs.path-tests.result }}" != "success" && "${{ needs.path-tests.result }}" != "skipped" ]] || \
@@ -857,10 +652,10 @@ jobs:
                 echo "|------------|--------|----------|"
                 echo "| 🔗 Integration Tests | ${{ needs.integration-tests.result }} | ✅ |"
                 echo "| 🏷️ Label Tests | ${{ needs.label-tests.result }} | ✅ |"
-                echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} | ✅ |"
                 echo "| 📝 Input Validation Tests | ${{ needs.input-validation-tests.result }} | ✅ |"
                 echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} | ✅ |"
                 echo "| 📁 Path Tests | ${{ needs.path-tests.result }} | ✅ |"
+                echo "| 📏 Size Tests | ${{ needs.size-tests.result }} | ✅ |"
                 echo ""
                 echo "All PR-specific tests must pass for the CI check to succeed."
                 echo ""
@@ -879,10 +674,10 @@ jobs:
           echo "- Unit Tests (includes all script tests): ${{ needs.unit-tests.result }}"
           echo "- Integration Tests: ${{ needs.integration-tests.result }}"
           echo "- Label Tests: ${{ needs.label-tests.result }}"
-          echo "- Check Monitoring Tests: ${{ needs.check-monitoring-tests.result }}"
           echo "- Input Validation Tests (PR): ${{ needs.input-validation-tests.result }}"
           echo "- Approval Tests: ${{ needs.approval-tests.result }}"
           echo "- Path Tests: ${{ needs.path-tests.result }}"
+          echo "- Size Tests: ${{ needs.size-tests.result }}"
           
           # Write to GitHub Step Summary
           {
@@ -897,9 +692,10 @@ jobs:
             echo "| 🧪 Unit Tests (includes all script tests) | ${{ needs.unit-tests.result }} |"
             echo "| 🔗 Integration Tests | ${{ needs.integration-tests.result }} |"
             echo "| 🏷️ Label Tests | ${{ needs.label-tests.result }} |"
-            echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} |"
             echo "| 📝 Input Validation Tests (PR) | ${{ needs.input-validation-tests.result }} |"
             echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} |"
+            echo "| 📁 Path Tests | ${{ needs.path-tests.result }} |"
+            echo "| 📏 Size Tests | ${{ needs.size-tests.result }} |"
             echo ""
             echo "---"
             echo "_Generated at $(date -u +"%Y-%m-%d %H:%M:%S UTC")_"

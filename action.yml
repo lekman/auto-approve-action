@@ -17,18 +17,6 @@ inputs:
     description: "Label matching mode: 'all', 'any', or 'none'"
     required: false
     default: "all"
-  wait-for-checks:
-    description: "Whether to wait for status checks to complete before approval"
-    required: false
-    default: "false"
-  max-wait-time:
-    description: "Maximum time in minutes to wait for checks to complete"
-    required: false
-    default: "30"
-  required-checks:
-    description: "Comma-separated list of specific checks to wait for"
-    required: false
-    default: ""
   silent:
     description: "If true, suppress job summary output"
     required: false
@@ -77,9 +65,6 @@ runs:
         ALLOWED_AUTHORS: ${{ inputs.allowed-authors }}
         REQUIRED_LABELS: ${{ inputs.required-labels }}
         LABEL_MATCH_MODE: ${{ inputs.label-match-mode }}
-        WAIT_FOR_CHECKS: ${{ inputs.wait-for-checks }}
-        MAX_WAIT_TIME: ${{ inputs.max-wait-time }}
-        REQUIRED_CHECKS: ${{ inputs.required-checks }}
         MERGE_METHOD: ${{ inputs.merge-method }}
         PATH_FILTERS: ${{ inputs.path-filters }}
         MAX_FILES_CHANGED: ${{ inputs.max-files-changed }}
@@ -135,20 +120,6 @@ runs:
         MAX_LINES_REMOVED: ${{ inputs.max-lines-removed }}
         MAX_TOTAL_LINES: ${{ inputs.max-total-lines }}
         SIZE_LIMIT_MESSAGE: ${{ inputs.size-limit-message }}
-    
-    - name: Monitor Status Checks
-      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
-      shell: bash
-      run: |
-        "$ACTION_PATH/scripts/monitor-checks.sh"
-      env:
-        ACTION_PATH: ${{ github.action_path }}
-        GITHUB_TOKEN: ${{ inputs.github-token }}
-        GITHUB_REPOSITORY: ${{ github.repository }}
-        WAIT_FOR_CHECKS: ${{ inputs.wait-for-checks }}
-        MAX_WAIT_TIME: ${{ inputs.max-wait-time }}
-        REQUIRED_CHECKS: ${{ inputs.required-checks }}
-        PR_NUMBER: ${{ github.event.pull_request.number }}
     
     - name: Approve Pull Request
       if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
