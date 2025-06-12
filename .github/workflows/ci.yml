@@ -235,7 +235,7 @@ jobs:
           allowed-authors: 'user1,user2,renovate[bot],${{ github.actor }}'
           label-match-mode: 'none'
           merge-method: 'squash'
-          path-filters: 'src/**/*.js,tests/**/*.js'
+          path-filters: 'scripts/**/*.sh,.github/**/*.yml'
           max-files-changed: '50'
           dry-run: 'true'
       
@@ -494,7 +494,7 @@ jobs:
           label-match-mode: 'none'
           max-files-changed: '50'
           max-lines-added: '3000'
-          max-lines-removed: '1000'
+          max-lines-removed: '1500'
           max-total-lines: '4000'
           size-limit-message: 'This PR is too large for automated approval'
           dry-run: 'true'
