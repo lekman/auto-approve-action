@@ -158,6 +158,51 @@ else
     log_info "✓ path-filters: Not provided (optional)"
 fi
 
+# Validate size limits (optional)
+# max-files-changed
+if [[ -n "${MAX_FILES_CHANGED:-}" ]]; then
+    if ! [[ "$MAX_FILES_CHANGED" =~ ^[0-9]+$ ]] || [[ "$MAX_FILES_CHANGED" -lt 0 ]]; then
+        log_error "Input 'max-files-changed' must be a non-negative integer (got: $MAX_FILES_CHANGED)"
+        exit 1
+    fi
+    log_info "✓ max-files-changed: Valid ($MAX_FILES_CHANGED)"
+else
+    log_info "✓ max-files-changed: Not provided (optional, default: 0)"
+fi
+
+# max-lines-added
+if [[ -n "${MAX_LINES_ADDED:-}" ]]; then
+    if ! [[ "$MAX_LINES_ADDED" =~ ^[0-9]+$ ]] || [[ "$MAX_LINES_ADDED" -lt 0 ]]; then
+        log_error "Input 'max-lines-added' must be a non-negative integer (got: $MAX_LINES_ADDED)"
+        exit 1
+    fi
+    log_info "✓ max-lines-added: Valid ($MAX_LINES_ADDED)"
+else
+    log_info "✓ max-lines-added: Not provided (optional, default: 0)"
+fi
+
+# max-lines-removed
+if [[ -n "${MAX_LINES_REMOVED:-}" ]]; then
+    if ! [[ "$MAX_LINES_REMOVED" =~ ^[0-9]+$ ]] || [[ "$MAX_LINES_REMOVED" -lt 0 ]]; then
+        log_error "Input 'max-lines-removed' must be a non-negative integer (got: $MAX_LINES_REMOVED)"
+        exit 1
+    fi
+    log_info "✓ max-lines-removed: Valid ($MAX_LINES_REMOVED)"
+else
+    log_info "✓ max-lines-removed: Not provided (optional, default: 0)"
+fi
+
+# max-total-lines
+if [[ -n "${MAX_TOTAL_LINES:-}" ]]; then
+    if ! [[ "$MAX_TOTAL_LINES" =~ ^[0-9]+$ ]] || [[ "$MAX_TOTAL_LINES" -lt 0 ]]; then
+        log_error "Input 'max-total-lines' must be a non-negative integer (got: $MAX_TOTAL_LINES)"
+        exit 1
+    fi
+    log_info "✓ max-total-lines: Valid ($MAX_TOTAL_LINES)"
+else
+    log_info "✓ max-total-lines: Not provided (optional, default: 0)"
+fi
+
 log_info "✅ All input validations passed successfully!"
 
 # Add validation summary
@@ -171,6 +216,10 @@ add_to_summary "| max-wait-time | $MAX_WAIT_TIME minutes | ✅ Valid |"
 add_to_summary "| required-checks | ${REQUIRED_CHECKS:-_(not provided)_} | ✅ Valid |"
 add_to_summary "| merge-method | ${MERGE_METHOD:-merge} | ✅ Valid |"
 add_to_summary "| path-filters | ${PATH_FILTERS:-_(not provided)_} | ✅ Valid |"
+add_to_summary "| max-files-changed | ${MAX_FILES_CHANGED:-0} | ✅ Valid |"
+add_to_summary "| max-lines-added | ${MAX_LINES_ADDED:-0} | ✅ Valid |"
+add_to_summary "| max-lines-removed | ${MAX_LINES_REMOVED:-0} | ✅ Valid |"
+add_to_summary "| max-total-lines | ${MAX_TOTAL_LINES:-0} | ✅ Valid |"
 
 log_step_end "Input Validation" "success"
 

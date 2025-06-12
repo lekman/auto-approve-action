@@ -45,6 +45,26 @@ inputs:
     description: "File path patterns for conditional approval (supports glob patterns and ! for exclusion)"
     required: false
     default: ""
+  max-files-changed:
+    description: "Maximum number of files that can be changed in the PR (0 = no limit)"
+    required: false
+    default: "0"
+  max-lines-added:
+    description: "Maximum number of lines that can be added in the PR (0 = no limit)"
+    required: false
+    default: "0"
+  max-lines-removed:
+    description: "Maximum number of lines that can be removed in the PR (0 = no limit)"
+    required: false
+    default: "0"
+  max-total-lines:
+    description: "Maximum total lines changed (added + removed) in the PR (0 = no limit)"
+    required: false
+    default: "0"
+  size-limit-message:
+    description: "Custom message to display when PR exceeds size limits"
+    required: false
+    default: "PR exceeds configured size limits"
 runs:
   using: "composite"
   steps:
@@ -62,6 +82,10 @@ runs:
         REQUIRED_CHECKS: ${{ inputs.required-checks }}
         MERGE_METHOD: ${{ inputs.merge-method }}
         PATH_FILTERS: ${{ inputs.path-filters }}
+        MAX_FILES_CHANGED: ${{ inputs.max-files-changed }}
+        MAX_LINES_ADDED: ${{ inputs.max-lines-added }}
+        MAX_LINES_REMOVED: ${{ inputs.max-lines-removed }}
+        MAX_TOTAL_LINES: ${{ inputs.max-total-lines }}
     
     - name: Verify PR Author
       if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
@@ -96,6 +120,21 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token }}
         PATH_FILTERS: ${{ inputs.path-filters }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
+    
+    - name: Validate PR Size
+      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
+      shell: bash
+      run: |
+        "$ACTION_PATH/scripts/validate-size.sh"
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        MAX_FILES_CHANGED: ${{ inputs.max-files-changed }}
+        MAX_LINES_ADDED: ${{ inputs.max-lines-added }}
+        MAX_LINES_REMOVED: ${{ inputs.max-lines-removed }}
+        MAX_TOTAL_LINES: ${{ inputs.max-total-lines }}
+        SIZE_LIMIT_MESSAGE: ${{ inputs.size-limit-message }}
     
     - name: Monitor Status Checks
       if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'

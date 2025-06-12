@@ -40,7 +40,7 @@ Key features include:
            uses: actions/checkout@v4
    
          - name: Auto Approve PR
-           uses: lekman/auto-approve-action@main
+           uses: lekman/auto-approve-action@v1
            with:
              github-token: ${{ secrets.CODE_OWNER_TOKEN }}
              allowed-authors: "dependabot[bot], renovate[bot], trusted-dev"
@@ -93,6 +93,25 @@ path-filters: '**/*,!.github/**/*,!scripts/**/*.sh,!**/security/**'
 label-match-mode: 'none'
 ```
 
+**PR Size Limits:**
+```yaml
+allowed-authors: 'dev-team, contributors'
+max-files-changed: '20'
+max-lines-added: '500'
+max-lines-removed: '300'
+max-total-lines: '800'
+size-limit-message: 'This PR is too large for auto-approval. Please break it into smaller PRs.'
+```
+
+**Small Documentation Updates Only:**
+```yaml
+allowed-authors: 'docs-team'
+path-filters: 'docs/**/*.md,*.md'
+max-files-changed: '5'
+max-total-lines: '100'
+label-match-mode: 'none'
+```
+
 **Release Please Automation:**
 ```yaml
 # .github/workflows/approve-release.yml
@@ -109,7 +128,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Auto Approve Release PR
-        uses: lekman/auto-approve-action@main
+        uses: lekman/auto-approve-action@v1
         with:
           github-token: ${{ secrets.CODE_OWNER_TOKEN }}
           allowed-authors: 'app/release-please-bot'
@@ -149,6 +168,11 @@ This configuration works best when combined with a CODEOWNERS file:
 | `dry-run` | ❌ | `'false'` | Test mode - performs all checks but skips actual approval |
 | `merge-method` | ❌ | `'merge'` | Auto-merge method: `merge`, `squash`, or `rebase` |
 | `path-filters` | ❌ | `''` | File path patterns for conditional approval (supports glob patterns and ! for exclusion) |
+| `max-files-changed` | ❌ | `'0'` | Maximum number of files that can be changed in the PR (0 = no limit) |
+| `max-lines-added` | ❌ | `'0'` | Maximum number of lines that can be added in the PR (0 = no limit) |
+| `max-lines-removed` | ❌ | `'0'` | Maximum number of lines that can be removed in the PR (0 = no limit) |
+| `max-total-lines` | ❌ | `'0'` | Maximum total lines changed (added + removed) in the PR (0 = no limit) |
+| `size-limit-message` | ❌ | `'PR exceeds configured size limits'` | Custom message to display when PR exceeds size limits |
 
 ### Outputs
 
@@ -179,6 +203,14 @@ This configuration works best when combined with a CODEOWNERS file:
 - **Test security controls** periodically with security team
 - **Maintain compliance** with organizational security policies
 
+## Documentation
+
+- **[Examples](docs/EXAMPLES.md)** - Comprehensive examples for various scenarios
+- **[Use Cases](docs/USE_CASES.md)** - Common use cases and implementation strategies
+- **[Contributing Guide](docs/CONTRIBUTING.md)** - How to contribute to the project
+- **[Setup GitHub App](docs/SETUP_GITHUB_APP.md)** - Guide for setting up a GitHub App for authentication
+- **[Changelog](https://github.com/lekman/auto-approve-action/blob/main/CHANGELOG.md)** - Detailed history of changes and releases
+
 ## Support
 
 If you encounter any issues or have questions:
@@ -187,17 +219,6 @@ If you encounter any issues or have questions:
 - **[Request a feature](https://github.com/lekman/auto-approve-action/issues/new?template=feature_request.md)** for enhancements
 - **[Check existing issues](https://github.com/lekman/auto-approve-action/issues?q=is%3Aissue)** for known problems and solutions
 
-## Contributors
-
-We welcome contributions from the community! If you would like to contribute to this project:
-
-- **See our [Contributing Guide](https://github.com/lekman/auto-approve-action/blob/main/docs/CONTRIBUTING.md)** for development setup and pull request instructions
-- **Review our [Code of Conduct](https://github.com/lekman/auto-approve-action/blob/main/docs/CODE_OF_CONDUCT.md)** for community guidelines
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](https://github.com/lekman/auto-approve-action/blob/main/LICENSE) file for details.
-
-## Changelog
-
-See [CHANGELOG.md](https://github.com/lekman/auto-approve-action/blob/main/CHANGELOG.md) for a detailed history of changes and releases.
