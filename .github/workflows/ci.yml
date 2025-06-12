@@ -692,9 +692,9 @@ jobs:
           label-match-mode: 'none'
           wait-for-checks: 'false'
           max-files-changed: '50'
-          max-lines-added: '2000'
+          max-lines-added: '3000'
           max-lines-removed: '1000'
-          max-total-lines: '3000'
+          max-total-lines: '4000'
           size-limit-message: 'This PR is too large for automated approval'
           dry-run: 'true'
       
