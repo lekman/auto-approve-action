@@ -69,7 +69,7 @@ run_test() {
     fi
     
     # Clean up environment
-    unset ALLOWED_AUTHORS REQUIRED_LABELS LABEL_MATCH_MODE WAIT_FOR_CHECKS MAX_WAIT_TIME REQUIRED_CHECKS 2>/dev/null || true
+    unset ALLOWED_AUTHORS REQUIRED_LABELS LABEL_MATCH_MODE MERGE_METHOD PATH_FILTERS MAX_FILES_CHANGED MAX_LINES_ADDED MAX_LINES_REMOVED MAX_TOTAL_LINES 2>/dev/null || true
     echo
 }
 
@@ -79,107 +79,73 @@ echo
 # Valid input tests
 run_test "Valid minimal inputs" "pass" \
     "ALLOWED_AUTHORS=user1,user2" \
-    "LABEL_MATCH_MODE=none" \
-    "WAIT_FOR_CHECKS=true" \
-    "MAX_WAIT_TIME=30"
+    "LABEL_MATCH_MODE=none"
 
 run_test "Valid with all inputs" "pass" \
     "ALLOWED_AUTHORS=user1,user2,dependabot[bot]" \
     "REQUIRED_LABELS=approved,ready" \
     "LABEL_MATCH_MODE=all" \
-    "WAIT_FOR_CHECKS=true" \
-    "MAX_WAIT_TIME=60" \
-    "REQUIRED_CHECKS=CI Build,Unit Tests"
+    "MERGE_METHOD=squash" \
+    "PATH_FILTERS=src/**/*.js,tests/**/*.js" \
+    "MAX_FILES_CHANGED=50" \
+    "MAX_LINES_ADDED=1000"
 
 run_test "Valid with spaces in CSV" "pass" \
     "ALLOWED_AUTHORS=user1, user2, user3" \
     "REQUIRED_LABELS=bug, enhancement" \
-    "LABEL_MATCH_MODE=any" \
-    "WAIT_FOR_CHECKS=false" \
-    "MAX_WAIT_TIME=15"
+    "LABEL_MATCH_MODE=any"
 
 # Invalid allowed-authors tests
 run_test "Missing allowed-authors" "fail" \
-    "LABEL_MATCH_MODE=all" \
-    "WAIT_FOR_CHECKS=true" \
-    "MAX_WAIT_TIME=30"
+    "LABEL_MATCH_MODE=all"
 
 run_test "Empty allowed-authors" "fail" \
     "ALLOWED_AUTHORS=" \
-    "LABEL_MATCH_MODE=all" \
-    "WAIT_FOR_CHECKS=true" \
-    "MAX_WAIT_TIME=30"
+    "LABEL_MATCH_MODE=all"
 
 run_test "Invalid CSV format - trailing comma" "fail" \
     "ALLOWED_AUTHORS=user1,user2," \
-    "LABEL_MATCH_MODE=all" \
-    "WAIT_FOR_CHECKS=true" \
-    "MAX_WAIT_TIME=30"
+    "LABEL_MATCH_MODE=all"
 
 # Invalid label-match-mode tests
 run_test "Invalid label-match-mode" "fail" \
     "ALLOWED_AUTHORS=user1" \
-    "LABEL_MATCH_MODE=invalid" \
-    "WAIT_FOR_CHECKS=true" \
-    "MAX_WAIT_TIME=30"
+    "LABEL_MATCH_MODE=invalid"
 
-# Invalid wait-for-checks tests
-run_test "Invalid wait-for-checks" "fail" \
+# Invalid merge-method tests
+run_test "Invalid merge-method" "fail" \
     "ALLOWED_AUTHORS=user1" \
     "LABEL_MATCH_MODE=all" \
-    "WAIT_FOR_CHECKS=yes" \
-    "MAX_WAIT_TIME=30"
+    "MERGE_METHOD=invalid"
 
-# Invalid max-wait-time tests
-run_test "Negative max-wait-time" "fail" \
+# Invalid size limit tests
+run_test "Negative max-files-changed" "fail" \
     "ALLOWED_AUTHORS=user1" \
     "LABEL_MATCH_MODE=all" \
-    "WAIT_FOR_CHECKS=true" \
-    "MAX_WAIT_TIME=-5"
+    "MAX_FILES_CHANGED=-5"
 
-run_test "Zero max-wait-time" "fail" \
+run_test "Non-numeric max-lines-added" "fail" \
     "ALLOWED_AUTHORS=user1" \
     "LABEL_MATCH_MODE=all" \
-    "WAIT_FOR_CHECKS=true" \
-    "MAX_WAIT_TIME=0"
-
-run_test "Non-numeric max-wait-time" "fail" \
-    "ALLOWED_AUTHORS=user1" \
-    "LABEL_MATCH_MODE=all" \
-    "WAIT_FOR_CHECKS=true" \
-    "MAX_WAIT_TIME=abc"
-
-run_test "Excessive max-wait-time" "fail" \
-    "ALLOWED_AUTHORS=user1" \
-    "LABEL_MATCH_MODE=all" \
-    "WAIT_FOR_CHECKS=true" \
-    "MAX_WAIT_TIME=500"
+    "MAX_LINES_ADDED=abc"
 
 # Label mode validation rules
 run_test "label-match-mode 'all' without labels" "fail" \
     "ALLOWED_AUTHORS=user1" \
-    "LABEL_MATCH_MODE=all" \
-    "WAIT_FOR_CHECKS=true" \
-    "MAX_WAIT_TIME=30"
+    "LABEL_MATCH_MODE=all"
 
 run_test "label-match-mode 'any' without labels" "fail" \
     "ALLOWED_AUTHORS=user1" \
-    "LABEL_MATCH_MODE=any" \
-    "WAIT_FOR_CHECKS=true" \
-    "MAX_WAIT_TIME=30"
+    "LABEL_MATCH_MODE=any"
 
 run_test "label-match-mode 'none' with labels (valid)" "pass" \
     "ALLOWED_AUTHORS=user1" \
     "REQUIRED_LABELS=do-not-merge" \
-    "LABEL_MATCH_MODE=none" \
-    "WAIT_FOR_CHECKS=true" \
-    "MAX_WAIT_TIME=30"
+    "LABEL_MATCH_MODE=none"
 
 run_test "label-match-mode 'none' without labels" "pass" \
     "ALLOWED_AUTHORS=user1" \
-    "LABEL_MATCH_MODE=none" \
-    "WAIT_FOR_CHECKS=true" \
-    "MAX_WAIT_TIME=30"
+    "LABEL_MATCH_MODE=none"
 
 # Summary
 echo "======================================="

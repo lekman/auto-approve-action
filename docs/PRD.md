@@ -101,13 +101,13 @@ The Auto-Approve GitHub Action is a composite GitHub Action that provides automa
   - Provide clear feedback on label requirements
 - **Priority**: P1 (High)
 
-#### FR-3: Status Check Integration
-- **Requirement**: Wait for and validate CI/CD check completion
+#### FR-3: GitHub Auto-Merge Integration
+- **Requirement**: Seamlessly work with GitHub's built-in auto-merge feature
 - **Acceptance Criteria**:
-  - Monitor all status checks by default
-  - Support specific check name filtering
-  - Configurable timeout for check completion
-  - Handle check failures gracefully
+  - Action approves PRs that meet criteria
+  - GitHub's auto-merge handles waiting for status checks
+  - No duplicate functionality with GitHub's native features
+  - Clear documentation on enabling auto-merge in repository settings
 - **Priority**: P0 (Critical)
 
 #### FR-4: Automated PR Approval
@@ -135,17 +135,13 @@ The Auto-Approve GitHub Action is a composite GitHub Action that provides automa
 - **Acceptance Criteria**:
   - File path-based approval rules
   - PR size and complexity thresholds
-  - Time-based approval windows
-  - Integration with external approval systems
 - **Priority**: P2 (Medium)
 
-#### FR-7: Multi-Repository Support
+#### FR-7: Reusable Action Architecture
 - **Requirement**: Reusable across multiple repositories
 - **Acceptance Criteria**:
   - Composite action architecture
   - Configurable per-repository settings
-  - Centralized policy management
-  - Cross-repository approval analytics
 - **Priority**: P1 (High)
 
 ---
@@ -301,8 +297,6 @@ Auto-Approve Composite Action
 allowed-authors: 'dependabot[bot]'
 required-labels: 'dependencies'
 label-match-mode: 'all'
-wait-for-checks: 'true'
-max-wait-time: '30'
 ```
 
 ### Documentation Team Workflow
@@ -310,8 +304,6 @@ max-wait-time: '30'
 allowed-authors: 'docs-team, technical-writers'
 required-labels: 'documentation'
 label-match-mode: 'any'
-wait-for-checks: 'true'
-max-wait-time: '15'
 ```
 
 ### Emergency Hotfix Process
@@ -319,9 +311,6 @@ max-wait-time: '15'
 allowed-authors: 'senior-dev-1, senior-dev-2, on-call-engineer'
 required-labels: 'hotfix, emergency'
 label-match-mode: 'any'
-wait-for-checks: 'true'
-required-checks: 'Critical Tests'
-max-wait-time: '10'
 ```
 
 ---

@@ -84,38 +84,6 @@ fi
 
 log_info "✓ label-match-mode: Valid ($LABEL_MATCH_MODE)"
 
-# Validate wait-for-checks
-if ! is_boolean "${WAIT_FOR_CHECKS}"; then
-    log_error "Input 'wait-for-checks' must be either 'true' or 'false' (got: $WAIT_FOR_CHECKS)"
-    exit 1
-fi
-
-log_info "✓ wait-for-checks: Valid ($WAIT_FOR_CHECKS)"
-
-# Validate max-wait-time
-if ! is_positive_integer "${MAX_WAIT_TIME}"; then
-    log_error "Input 'max-wait-time' must be a positive integer representing minutes (got: $MAX_WAIT_TIME)"
-    exit 1
-fi
-
-# Additional check for reasonable max-wait-time (e.g., not more than 360 minutes / 6 hours)
-if [[ $MAX_WAIT_TIME -gt 360 ]]; then
-    log_error "Input 'max-wait-time' cannot exceed 360 minutes (6 hours) (got: $MAX_WAIT_TIME)"
-    exit 1
-fi
-
-log_info "✓ max-wait-time: Valid ($MAX_WAIT_TIME minutes)"
-
-# Validate required-checks (optional)
-if [[ -n "${REQUIRED_CHECKS:-}" ]]; then
-    if ! is_valid_csv_list "$REQUIRED_CHECKS"; then
-        log_error "Input 'required-checks' must be a valid comma-separated list when provided"
-        exit 1
-    fi
-    log_info "✓ required-checks: Valid ($REQUIRED_CHECKS)"
-else
-    log_info "✓ required-checks: Not provided (optional)"
-fi
 
 # Additional validation: if label-match-mode is not 'none', required-labels should be provided
 if [[ "$LABEL_MATCH_MODE" != "none" && -z "${REQUIRED_LABELS:-}" ]]; then
@@ -211,9 +179,6 @@ add_to_summary "|-----------|-------|--------|"
 add_to_summary "| allowed-authors | $ALLOWED_AUTHORS | ✅ Valid |"
 add_to_summary "| required-labels | ${REQUIRED_LABELS:-_(not provided)_} | ✅ Valid |"
 add_to_summary "| label-match-mode | $LABEL_MATCH_MODE | ✅ Valid |"
-add_to_summary "| wait-for-checks | $WAIT_FOR_CHECKS | ✅ Valid |"
-add_to_summary "| max-wait-time | $MAX_WAIT_TIME minutes | ✅ Valid |"
-add_to_summary "| required-checks | ${REQUIRED_CHECKS:-_(not provided)_} | ✅ Valid |"
 add_to_summary "| merge-method | ${MERGE_METHOD:-merge} | ✅ Valid |"
 add_to_summary "| path-filters | ${PATH_FILTERS:-_(not provided)_} | ✅ Valid |"
 add_to_summary "| max-files-changed | ${MAX_FILES_CHANGED:-0} | ✅ Valid |"
@@ -227,7 +192,4 @@ log_step_end "Input Validation" "success"
 export VALIDATED_ALLOWED_AUTHORS="$ALLOWED_AUTHORS"
 export VALIDATED_REQUIRED_LABELS="${REQUIRED_LABELS:-}"
 export VALIDATED_LABEL_MATCH_MODE="$LABEL_MATCH_MODE"
-export VALIDATED_WAIT_FOR_CHECKS="$WAIT_FOR_CHECKS"
-export VALIDATED_MAX_WAIT_TIME="$MAX_WAIT_TIME"
-export VALIDATED_REQUIRED_CHECKS="${REQUIRED_CHECKS:-}"
 export VALIDATED_PATH_FILTERS="${PATH_FILTERS:-}"

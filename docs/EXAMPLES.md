@@ -22,10 +22,10 @@ This document provides comprehensive examples and use cases for the Auto-Approve
   - [Configuration Files](#configuration-files)
   - [Exclude Sensitive Paths](#exclude-sensitive-paths)
   - [Multiple Path Patterns](#multiple-path-patterns)
-- [Status Check Integration](#status-check-integration)
-  - [Wait for All Checks](#wait-for-all-checks)
-  - [Specific Check Requirements](#specific-check-requirements)
-  - [Quick Approval with Timeout](#quick-approval-with-timeout)
+- [GitHub Auto-Merge Integration](#github-auto-merge-integration)
+  - [Basic Auto-Merge Setup](#basic-auto-merge-setup)
+  - [Auto-Merge with Branch Protection](#auto-merge-with-branch-protection)
+  - [Quick Approval for Urgent Changes](#quick-approval-for-urgent-changes)
 - [Advanced Patterns](#advanced-patterns)
   - [Team-Based Workflows](#team-based-workflows)
   - [Emergency Hotfix Process](#emergency-hotfix-process)
@@ -82,8 +82,6 @@ jobs:
         with:
           github-token: ${{ secrets.CODE_OWNER_TOKEN }}
           allowed-authors: "john-doe"
-          wait-for-checks: true
-          max-wait-time: 30
 ```
 
 ### Multiple Authors
@@ -105,8 +103,6 @@ jobs:
         with:
           github-token: ${{ secrets.CODE_OWNER_TOKEN }}
           allowed-authors: "alice,bob,charlie,dana"
-          wait-for-checks: true
-          required-checks: "CI / Test,CI / Lint"
 ```
 
 ## Bot Integration
@@ -143,8 +139,6 @@ jobs:
           github-token: ${{ secrets.CODE_OWNER_TOKEN }}
           allowed-authors: "dependabot[bot]"
           required-labels: "dependencies"
-          wait-for-checks: true
-          max-wait-time: 45
 ```
 
 ### Renovate
@@ -169,7 +163,6 @@ jobs:
           allowed-authors: "renovate[bot]"
           required-labels: "renovate,automerge"
           label-match-mode: "all"
-          wait-for-checks: true
           merge-method: "squash"
 ```
 
@@ -196,8 +189,6 @@ jobs:
           allowed-authors: "app/release-please-bot"
           required-labels: "autorelease: pending"
           label-match-mode: "all"
-          wait-for-checks: true
-          max-wait-time: 10
           path-filters: ".github/release-manifest.json,**/CHANGELOG.md,**/package.json,**/package-lock.json"
           merge-method: "merge"
 ```
@@ -222,7 +213,6 @@ jobs:
           github-token: ${{ secrets.CODE_OWNER_TOKEN }}
           allowed-authors: "app/my-custom-bot,app/automation-bot"
           required-labels: "bot-pr"
-          wait-for-checks: true
           path-filters: "config/**/*,!config/security/**"
 ```
 
@@ -249,7 +239,6 @@ jobs:
           allowed-authors: "trusted-team"
           required-labels: "reviewed,tested,documented"
           label-match-mode: "all"
-          wait-for-checks: true
 ```
 
 ### Require Any Label
@@ -296,7 +285,6 @@ jobs:
           allowed-authors: "dependabot[bot]"
           required-labels: "do-not-merge,work-in-progress,needs-review"
           label-match-mode: "none"
-          wait-for-checks: true
 ```
 
 ## Path-Based Approvals
@@ -321,7 +309,6 @@ jobs:
           github-token: ${{ secrets.CODE_OWNER_TOKEN }}
           allowed-authors: "docs-team,contributors"
           path-filters: "docs/**/*.md,README.md,*.md,LICENSE,CONTRIBUTING.md"
-          wait-for-checks: false
 ```
 
 ### Configuration Files
@@ -350,8 +337,6 @@ jobs:
             config/**/*.yml,
             !config/secrets/**,
             !.github/workflows/security-*.yml
-          wait-for-checks: true
-          required-checks: "Config Validation"
 ```
 
 ### Exclude Sensitive Paths
@@ -383,7 +368,6 @@ jobs:
             !**/*key*,
             !**/*.pem,
             !**/*.key
-          wait-for-checks: true
 ```
 
 ### Multiple Path Patterns
@@ -414,15 +398,13 @@ jobs:
             !src/components/auth/**,
             !src/api/**
           required-labels: "frontend"
-          wait-for-checks: true
-          required-checks: "UI Tests,Lint"
 ```
 
-## Status Check Integration
+## GitHub Auto-Merge Integration
 
-### Wait for All Checks
+### Basic Auto-Merge Setup
 
-Wait for all status checks to complete before approving.
+Approve PRs and let GitHub's auto-merge handle status checks.
 
 ```yaml
 name: Auto Approve After All Checks
@@ -439,13 +421,11 @@ jobs:
         with:
           github-token: ${{ secrets.CODE_OWNER_TOKEN }}
           allowed-authors: "trusted-bot"
-          wait-for-checks: true
-          max-wait-time: 60
 ```
 
-### Specific Check Requirements
+### Auto-Merge with Branch Protection
 
-Wait for specific critical checks only.
+Approve PRs that will be auto-merged when branch protection rules are satisfied.
 
 ```yaml
 name: Auto Approve with Critical Checks
@@ -462,18 +442,11 @@ jobs:
         with:
           github-token: ${{ secrets.CODE_OWNER_TOKEN }}
           allowed-authors: "deployment-bot"
-          wait-for-checks: true
-          required-checks: |
-            CI / Unit Tests,
-            CI / Integration Tests,
-            Security Scan,
-            Code Coverage
-          max-wait-time: 45
 ```
 
-### Quick Approval with Timeout
+### Quick Approval for Urgent Changes
 
-Fast approval for time-sensitive updates with short timeout.
+Fast approval for time-sensitive updates.
 
 ```yaml
 name: Quick Auto Approve
@@ -492,8 +465,6 @@ jobs:
           allowed-authors: "hotfix-team"
           required-labels: "urgent,hotfix"
           label-match-mode: "all"
-          wait-for-checks: true
-          max-wait-time: 5
           merge-method: "merge"
 ```
 
@@ -520,8 +491,6 @@ jobs:
           github-token: ${{ secrets.CODE_OWNER_TOKEN }}
           allowed-authors: "frontend-team-1,frontend-team-2"
           path-filters: "src/frontend/**/*,public/**/*"
-          required-checks: "Frontend Tests"
-          wait-for-checks: true
 
   backend-approval:
     runs-on: ubuntu-latest
@@ -533,8 +502,6 @@ jobs:
           github-token: ${{ secrets.CODE_OWNER_TOKEN }}
           allowed-authors: "backend-team-1,backend-team-2"
           path-filters: "src/api/**/*,src/services/**/*"
-          required-checks: "Backend Tests,API Tests"
-          wait-for-checks: true
 
   infra-approval:
     runs-on: ubuntu-latest
@@ -546,9 +513,6 @@ jobs:
           github-token: ${{ secrets.CODE_OWNER_TOKEN }}
           allowed-authors: "infra-team,platform-team"
           path-filters: "terraform/**/*,k8s/**/*,.github/workflows/**"
-          required-checks: "Terraform Plan,Security Scan"
-          wait-for-checks: true
-          max-wait-time: 60
 ```
 
 ### Emergency Hotfix Process
@@ -595,8 +559,6 @@ jobs:
           allowed-authors: "senior-dev-1,senior-dev-2,on-call-lead"
           required-labels: "emergency,hotfix,approved-by-lead"
           label-match-mode: "all"
-          wait-for-checks: true
-          max-wait-time: 10
           merge-method: "merge"
 ```
 
@@ -641,7 +603,6 @@ jobs:
             scripts/maintenance/**/*,
             config/maintenance/**/*,
             .github/workflows/maintenance-*.yml
-          wait-for-checks: true
 ```
 
 ### Monorepo Patterns
@@ -689,8 +650,6 @@ jobs:
           allowed-authors: ${{ steps.owners.outputs.owners }}
           path-filters: "packages/${{ matrix.package }}/**/*"
           required-labels: "package:${{ matrix.package }}"
-          wait-for-checks: true
-          required-checks: "${{ matrix.package }} Tests"
 ```
 
 ## Size and Complexity Limits
@@ -719,7 +678,6 @@ jobs:
           max-lines-removed: 100
           max-total-lines: 300
           size-limit-message: "PR is too large. Please break it into smaller, focused changes."
-          wait-for-checks: true
 ```
 
 ### Different Limits by Type
@@ -745,7 +703,6 @@ jobs:
           path-filters: "docs/**/*,*.md"
           max-files-changed: 20
           max-total-lines: 500
-          wait-for-checks: false
 
   feature-approval:
     runs-on: ubuntu-latest
@@ -760,7 +717,6 @@ jobs:
           max-lines-added: 1000
           max-lines-removed: 500
           max-total-lines: 1500
-          wait-for-checks: true
 
   refactor-approval:
     runs-on: ubuntu-latest
@@ -776,7 +732,6 @@ jobs:
           max-lines-removed: 2000
           max-total-lines: 4000
           size-limit-message: "Large refactoring PRs require manual review."
-          wait-for-checks: true
 ```
 
 ### Progressive Size Limits
@@ -805,7 +760,6 @@ jobs:
           max-total-lines: 150
           size-limit-message: "Junior developer PRs exceeding size limits require senior review."
           required-labels: "junior-pr"
-          wait-for-checks: true
 
   mid-level-approval:
     runs-on: ubuntu-latest
@@ -820,7 +774,6 @@ jobs:
           max-lines-added: 500
           max-lines-removed: 300
           max-total-lines: 800
-          wait-for-checks: true
 
   senior-dev-approval:
     runs-on: ubuntu-latest
@@ -835,7 +788,6 @@ jobs:
           max-lines-added: 2000
           max-lines-removed: 1500
           max-total-lines: 3500
-          wait-for-checks: true
 ```
 
 ### Dependency Update Size Limits
@@ -889,7 +841,6 @@ jobs:
           max-lines-added: ${{ fromJson(steps.check-size.outputs.result).isMajor && '1000' || '5000' }}
           max-lines-removed: ${{ fromJson(steps.check-size.outputs.result).isMajor && '500' || '2000' }}
           size-limit-message: "Dependency update is too large. Manual review required for security."
-          wait-for-checks: true
 ```
 
 ### Combined Path and Size Restrictions
@@ -920,7 +871,6 @@ jobs:
           max-files-changed: 10
           max-total-lines: 200
           size-limit-message: "Configuration changes exceeding size limits require security review."
-          wait-for-checks: true
 
   test-updates:
     runs-on: ubuntu-latest
@@ -940,7 +890,6 @@ jobs:
           max-lines-removed: 1000
           size-limit-message: "Test changes are too large. Consider splitting into multiple PRs."
           required-labels: "tests"
-          wait-for-checks: true
 ```
 
 ### Zero-Tolerance Size Limits
@@ -983,8 +932,6 @@ jobs:
             Consider breaking this into smaller changes.
           required-labels: "security-review,approved-by-lead"
           label-match-mode: "all"
-          wait-for-checks: true
-          required-checks: "Security Scan,Vulnerability Check,Code Quality"
 ```
 
 ## Security Patterns
@@ -1022,7 +969,6 @@ jobs:
         with:
           github-token: ${{ secrets.CODE_OWNER_TOKEN }}
           allowed-authors: "trusted-team"
-          wait-for-checks: true
           dry-run: ${{ steps.check-hours.outputs.business-hours != 'true' }}
 ```
 
@@ -1047,7 +993,6 @@ jobs:
           github-token: ${{ secrets.TECH_LEAD_TOKEN }}
           allowed-authors: "dev-team"
           required-labels: "tech-reviewed"
-          wait-for-checks: true
           dry-run: true
       
       - name: Add stage 2 label
@@ -1073,8 +1018,6 @@ jobs:
           github-token: ${{ secrets.SECURITY_TEAM_TOKEN }}
           allowed-authors: "security-team"
           required-labels: "security-reviewed"
-          wait-for-checks: true
-          required-checks: "Security Scan,Vulnerability Check"
 
   final-approval:
     runs-on: ubuntu-latest
@@ -1087,7 +1030,6 @@ jobs:
           allowed-authors: "release-manager"
           required-labels: "tech-reviewed,security-reviewed,ready-to-merge"
           label-match-mode: "all"
-          wait-for-checks: true
           merge-method: "squash"
 ```
 
@@ -1137,7 +1079,6 @@ jobs:
         with:
           github-token: ${{ secrets.CODE_OWNER_TOKEN }}
           allowed-authors: "trusted-bot"
-          wait-for-checks: true
       
       - name: Post-approval audit
         if: always()
@@ -1170,7 +1111,7 @@ jobs:
 1. **Always use specific version tags** (`@v1`) instead of `@main` for production workflows
 2. **Store tokens securely** in GitHub Secrets, never hardcode them
 3. **Use descriptive allowed-authors lists** and document why each author is trusted
-4. **Implement appropriate wait times** based on your typical CI/CD duration
+4. **Enable GitHub auto-merge** in repository settings to handle status checks
 5. **Use path filters** to limit the scope of auto-approval
 6. **Combine with branch protection rules** for additional security
 7. **Regular audit** approved PRs to ensure the system isn't being abused
@@ -1187,10 +1128,10 @@ jobs:
    - Check for typos in usernames
    - For bots, ensure you're using the correct format (e.g., `dependabot[bot]` or `app/my-bot`)
 
-2. **Timeout waiting for checks**
-   - Increase `max-wait-time` if your CI takes longer
-   - Use `required-checks` to wait only for specific checks
-   - Check if the checks are actually running
+2. **GitHub auto-merge not working**
+   - Ensure "Allow auto-merge" is enabled in repository settings
+   - Verify branch protection rules are configured correctly
+   - Check that required status checks are passing
 
 3. **Path filters not working**
    - Verify glob patterns are correct
