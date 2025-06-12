@@ -214,7 +214,7 @@ enable_auto_merge() {
     esac
     
     # Enable auto-merge using the specified method
-    if ! result=$(gh pr merge "$pr_number" --enable-auto --$merge_method 2>&1); then
+    if ! result=$(gh pr merge "$pr_number" --auto --$merge_method 2>&1); then
         log_error "Failed to enable auto-merge: $result"
         return 1
     fi
