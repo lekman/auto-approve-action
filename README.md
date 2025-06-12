@@ -114,6 +114,10 @@ label-match-mode: 'none'
 # .github/workflows/approve-release.yml
 name: Auto Approve Release Please PR
 
+permissions:
+  contents: read
+  pull-requests: write
+
 on:
   pull_request:
     types: [opened, synchronize, reopened]
