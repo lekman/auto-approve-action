@@ -20,6 +20,7 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || !startsWith(github.head_ref, 'release-please--')
     strategy:
       fail-fast: false
       matrix:
@@ -29,6 +30,7 @@ jobs:
           - { name: "Label Validation", script: "./scripts/test-validate-labels.sh" }
           - { name: "Status Check Monitor", script: "./scripts/test-monitor-checks.sh" }
           - { name: "Approval Execution", script: "./scripts/test-approve-pr.sh" }
+          - { name: "Path Validation", script: "./scripts/test-validate-paths.sh" }
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -58,7 +60,7 @@ jobs:
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')
     permissions:
       contents: read
       pull-requests: write
@@ -134,7 +136,7 @@ jobs:
   label-tests:
     name: Label Validation Tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')
     permissions:
       contents: read
       pull-requests: write
@@ -208,7 +210,7 @@ jobs:
   check-monitoring-tests:
     name: Status Check Monitoring Tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')
     permissions:
       contents: read
       pull-requests: write
@@ -358,7 +360,7 @@ jobs:
   input-validation-tests:
     name: Input Validation Tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')
     permissions:
       contents: read
       pull-requests: write
@@ -468,7 +470,7 @@ jobs:
   approval-tests:
     name: Approval Execution Tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')
     permissions:
       contents: read
       pull-requests: write
@@ -553,6 +555,70 @@ jobs:
           wait-for-checks: 'false'
           dry-run: 'true'
 
+  # Path validation tests
+  path-tests:
+    name: Path Validation Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--')
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+      
+      # Test with path filters allowing all files
+      - name: Test Path Filter - Allow All
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+          path-filters: '**/*'
+          dry-run: 'true'
+      
+      # Test with path filters for docs only
+      - name: Test Path Filter - Docs Only
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+          path-filters: 'docs/**/*.md,README.md,*.md'
+          dry-run: 'true'
+      
+      # Test with exclusion patterns
+      - name: Test Path Filter - Exclude Tests
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+          path-filters: '**/*,!tests/**/*,!**/*.test.js'
+          dry-run: 'true'
+      
+      # Test complex pattern combination
+      - name: Test Path Filter - Complex Pattern
+        uses: ./
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          allowed-authors: ${{ github.actor }}
+          label-match-mode: 'none'
+          wait-for-checks: 'false'
+          path-filters: '.github/**/*.yml,scripts/**/*.sh,!scripts/test-*.sh'
+          dry-run: 'true'
+
   # Final check - This job is used as the single required check for branch protection
   ci-success:
     name: CI Success
@@ -564,10 +630,27 @@ jobs:
       - check-monitoring-tests
       - input-validation-tests
       - approval-tests
+      - path-tests
     if: always()
     steps:
       - name: Check all tests passed
         run: |
+          # Special handling for release-please branches
+          if [[ "${{ github.head_ref }}" == release-please--* ]]; then
+            echo "✅ Skipping CI checks for release-please branch"
+            {
+              echo "## ✅ CI Skipped for Release Please"
+              echo ""
+              echo "This is a release-please branch. CI checks are automatically skipped."
+              echo ""
+              echo "Branch: ${{ github.head_ref }}"
+              echo ""
+              echo "---"
+              echo "_Generated at $(date -u +"%Y-%m-%d %H:%M:%S UTC")_"
+            } >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+          
           # Check if any of the needed jobs failed
           if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
             echo "❌ One or more CI jobs failed"
@@ -588,6 +671,7 @@ jobs:
               echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} |"
               echo "| 📝 Input Validation Tests (PR) | ${{ needs.input-validation-tests.result }} |"
               echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} |"
+              echo "| 📁 Path Tests | ${{ needs.path-tests.result }} |"
               echo ""
               echo "### Failed Jobs"
               echo ""
@@ -620,6 +704,7 @@ jobs:
               echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} |"
               echo "| 📝 Input Validation Tests (PR) | ${{ needs.input-validation-tests.result }} |"
               echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} |"
+              echo "| 📁 Path Tests | ${{ needs.path-tests.result }} |"
               echo ""
               echo "---"
               echo "_Generated at $(date -u +"%Y-%m-%d %H:%M:%S UTC")_"
@@ -628,14 +713,27 @@ jobs:
             exit 1
           fi
           
-          # For PR context, ensure all PR-specific tests ran
+          # For PR context, ensure all PR-specific tests ran (unless skipped for release-please)
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             echo "Checking PR-specific job results..."
-            if [[ "${{ needs.integration-tests.result }}" != "success" ]] || \
-               [[ "${{ needs.label-tests.result }}" != "success" ]] || \
-               [[ "${{ needs.check-monitoring-tests.result }}" != "success" ]] || \
-               [[ "${{ needs.input-validation-tests.result }}" != "success" ]] || \
-               [[ "${{ needs.approval-tests.result }}" != "success" ]]; then
+            # Check if all jobs were skipped (happens for release-please branches)
+            if [[ "${{ needs.unit-tests.result }}" == "skipped" ]] && \
+               [[ "${{ needs.integration-tests.result }}" == "skipped" ]] && \
+               [[ "${{ needs.label-tests.result }}" == "skipped" ]] && \
+               [[ "${{ needs.check-monitoring-tests.result }}" == "skipped" ]] && \
+               [[ "${{ needs.input-validation-tests.result }}" == "skipped" ]] && \
+               [[ "${{ needs.approval-tests.result }}" == "skipped" ]] && \
+               [[ "${{ needs.path-tests.result }}" == "skipped" ]]; then
+              echo "✅ All jobs skipped (release-please branch)"
+              exit 0
+            fi
+            
+            if [[ "${{ needs.integration-tests.result }}" != "success" && "${{ needs.integration-tests.result }}" != "skipped" ]] || \
+               [[ "${{ needs.label-tests.result }}" != "success" && "${{ needs.label-tests.result }}" != "skipped" ]] || \
+               [[ "${{ needs.check-monitoring-tests.result }}" != "success" && "${{ needs.check-monitoring-tests.result }}" != "skipped" ]] || \
+               [[ "${{ needs.input-validation-tests.result }}" != "success" && "${{ needs.input-validation-tests.result }}" != "skipped" ]] || \
+               [[ "${{ needs.approval-tests.result }}" != "success" && "${{ needs.approval-tests.result }}" != "skipped" ]] || \
+               [[ "${{ needs.path-tests.result }}" != "success" && "${{ needs.path-tests.result }}" != "skipped" ]]; then
               echo "❌ PR-specific tests did not complete successfully"
               
               # Write PR test failure summary
@@ -653,6 +751,7 @@ jobs:
                 echo "| ✅ Check Monitoring Tests | ${{ needs.check-monitoring-tests.result }} | ✅ |"
                 echo "| 📝 Input Validation Tests | ${{ needs.input-validation-tests.result }} | ✅ |"
                 echo "| 🚀 Approval Tests | ${{ needs.approval-tests.result }} | ✅ |"
+                echo "| 📁 Path Tests | ${{ needs.path-tests.result }} | ✅ |"
                 echo ""
                 echo "All PR-specific tests must pass for the CI check to succeed."
                 echo ""
@@ -674,6 +773,7 @@ jobs:
           echo "- Check Monitoring Tests: ${{ needs.check-monitoring-tests.result }}"
           echo "- Input Validation Tests (PR): ${{ needs.input-validation-tests.result }}"
           echo "- Approval Tests: ${{ needs.approval-tests.result }}"
+          echo "- Path Tests: ${{ needs.path-tests.result }}"
           
           # Write to GitHub Step Summary
           {

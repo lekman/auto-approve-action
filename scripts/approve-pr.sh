@@ -260,6 +260,8 @@ main() {
     local label_mode="${LABEL_MATCH_MODE:-none}"
     local checks_total="${VALIDATED_CHECKS_TOTAL:-0}"
     local checks_passed="${VALIDATED_CHECKS_PASSED:-0}"
+    local path_status="${VALIDATED_PATH_STATUS:-}"
+    local path_reason="${VALIDATED_PATH_REASON:-}"
     
     log_info "Processing approval for PR #$pr_number by @$pr_author"
     
@@ -330,6 +332,18 @@ main() {
             echo "- **Passed Checks**: $checks_passed"
             echo "- **Status**: All required checks passed"
             echo ""
+            if [[ -n "$path_status" ]]; then
+                echo "### ✅ File Path Validation"
+                if [[ "$path_status" == "approved" ]]; then
+                    echo "- **Status**: All file changes meet path filter requirements"
+                else
+                    echo "- **Status**: Path validation was not performed or failed"
+                    if [[ -n "$path_reason" ]]; then
+                        echo "- **Reason**: $path_reason"
+                    fi
+                fi
+                echo ""
+            fi
             if [[ "${DRY_RUN:-false}" != "true" ]]; then
                 echo "### 🔀 Auto-Merge Status"
                 if [[ "$auto_merge_enabled" == "true" ]]; then

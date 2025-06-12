@@ -79,6 +79,59 @@ label-match-mode: 'any'
 max-wait-time: '10'
 ```
 
+**Path-Based Approval for Documentation:**
+```yaml
+allowed-authors: 'docs-team, contributors'
+path-filters: 'docs/**/*.md,README.md,*.md'
+label-match-mode: 'none'
+```
+
+**Security-Sensitive Path Exclusion:**
+```yaml
+allowed-authors: 'dependabot[bot]'
+path-filters: '**/*,!.github/**/*,!scripts/**/*.sh,!**/security/**'
+label-match-mode: 'none'
+```
+
+**Release Please Automation:**
+```yaml
+# .github/workflows/approve-release.yml
+name: Auto Approve Release Please PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - 'release-please-*'
+
+jobs:
+  auto-approve:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto Approve Release PR
+        uses: lekman/auto-approve-action@main
+        with:
+          github-token: ${{ secrets.CODE_OWNER_TOKEN }}
+          allowed-authors: 'app/release-please-bot'
+          required-labels: 'autorelease: pending'
+          label-match-mode: 'all'
+          wait-for-checks: true
+          max-wait-time: '10'
+          # Only allow changes to release files
+          path-filters: '.github/release-manifest.json,**/CHANGELOG.md,CHANGELOG.md'
+```
+
+This configuration works best when combined with a CODEOWNERS file:
+```
+# .github/CODEOWNERS
+# Default owner for all files
+* @your-team
+
+# Release files can be approved by the bot
+/CHANGELOG.md @app/release-please-bot
+/.github/release-manifest.json @app/release-please-bot
+```
+
 ## Configuration Reference
 
 ### Inputs
@@ -89,10 +142,13 @@ max-wait-time: '10'
 | `allowed-authors` | ✅ | - | Comma-separated list of GitHub usernames allowed for auto-approval |
 | `required-labels` | ❌ | `''` | Comma-separated list of required PR labels |
 | `label-match-mode` | ❌ | `'all'` | How to match labels: `all`, `any`, or `none` |
-| `wait-for-checks` | ❌ | `'true'` | Whether to wait for status checks to complete |
+| `wait-for-checks` | ❌ | `'false'` | Whether to wait for status checks to complete |
 | `required-checks` | ❌ | `''` | Specific check names to wait for (optional) |
 | `max-wait-time` | ❌ | `'30'` | Maximum wait time for checks in minutes |
-| `approval-message` | ❌ | `'Auto-approved after all checks passed ✅'` | Custom approval message |
+| `silent` | ❌ | `'false'` | Suppress job summary output |
+| `dry-run` | ❌ | `'false'` | Test mode - performs all checks but skips actual approval |
+| `merge-method` | ❌ | `'merge'` | Auto-merge method: `merge`, `squash`, or `rebase` |
+| `path-filters` | ❌ | `''` | File path patterns for conditional approval (supports glob patterns and ! for exclusion) |
 
 ### Outputs
 
