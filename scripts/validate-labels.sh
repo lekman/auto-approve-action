@@ -128,6 +128,11 @@ main() {
         exit 1
     fi
     
+    if [[ -z "${GITHUB_REPOSITORY:-}" ]]; then
+        log_error "GITHUB_REPOSITORY environment variable is not set"
+        exit 1
+    fi
+    
     if [[ -z "${LABEL_MATCH_MODE:-}" ]]; then
         log_error "LABEL_MATCH_MODE environment variable is not set"
         exit 1

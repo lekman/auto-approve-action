@@ -113,6 +113,11 @@ main() {
         exit 1
     fi
     
+    if [[ -z "${GITHUB_REPOSITORY:-}" ]]; then
+        log_error "GITHUB_REPOSITORY environment variable is not set"
+        exit 1
+    fi
+    
     if [[ -z "${PR_NUMBER:-}" ]]; then
         log_error "PR_NUMBER environment variable is not set"
         exit 1

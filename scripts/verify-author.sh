@@ -68,6 +68,11 @@ main() {
         exit 1
     fi
     
+    if [[ -z "${GITHUB_REPOSITORY:-}" ]]; then
+        log_error "GITHUB_REPOSITORY environment variable is not set"
+        exit 1
+    fi
+    
     if [[ -z "${ALLOWED_AUTHORS:-}" ]]; then
         log_error "ALLOWED_AUTHORS environment variable is not set"
         exit 1
