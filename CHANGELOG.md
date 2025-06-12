@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.2.1...auto-approve-action@v1.2.2) (2025-06-12)
+
+
+### Bug Fixes
+
+* add GITHUB_REPOSITORY environment variable to scripts for improved PR access ([cd8eeaa](https://github.com/lekman/auto-approve-action/commit/cd8eeaa6c5a8e2c6c18962c6e1fc3c0e16ab4370))
+
 ## [1.2.1](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.2.0...auto-approve-action@v1.2.1) (2025-06-12)
 
 
