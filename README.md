@@ -12,19 +12,21 @@ Key features include:
 
 ## Usage
 
-### Prerequisites:
+### Prerequisites
+
 - A GitHub Personal Access Token (PAT) or GitHub App token with `repo` and `pull_requests:write` permissions
 - Code owner privileges or admin access for the token owner
 - Existing CI/CD workflows for status check validation
 - **Repository Settings**: If using auto-merge, ensure "Allow auto-merge" is enabled in your repository settings (Settings → General → Pull Requests)
 
-### Basic Setup:
+### Basic Setup
 
 1. **Create repository secret** for your GitHub token:
    - Go to Repository Settings > Secrets and variables > Actions
    - Add `CODE_OWNER_TOKEN` with your PAT or App token
 
 2. **Add workflow file** (`.github/workflows/auto-approve.yml`):
+
    ```yaml
    name: Auto Approve PR
    
@@ -53,9 +55,10 @@ Key features include:
    - Define `required-labels` for additional security (optional)
    - Choose `label-match-mode`: `all`, `any`, or `none`
 
-### Advanced Configuration Examples:
+### Advanced Configuration Examples
 
 **Dependabot with Safety Labels:**
+
 ```yaml
 allowed-authors: "dependabot[bot]"
 required-labels: "dependencies, minor-update"
@@ -63,6 +66,7 @@ label-match-mode: "all"
 ```
 
 **Documentation Team Workflow:**
+
 ```yaml
 allowed-authors: 'docs-team, technical-writers'
 required-labels: 'documentation'
@@ -70,6 +74,7 @@ label-match-mode: 'any'
 ```
 
 **Emergency Hotfix Process:**
+
 ```yaml
 allowed-authors: 'senior-dev-1, on-call-engineer'
 required-labels: 'hotfix, emergency'
@@ -77,6 +82,7 @@ label-match-mode: 'any'
 ```
 
 **Path-Based Approval for Documentation:**
+
 ```yaml
 allowed-authors: 'docs-team, contributors'
 path-filters: 'docs/**/*.md,README.md,*.md'
@@ -84,6 +90,7 @@ label-match-mode: 'none'
 ```
 
 **Security-Sensitive Path Exclusion:**
+
 ```yaml
 allowed-authors: 'dependabot[bot]'
 path-filters: '**/*,!.github/**/*,!scripts/**/*.sh,!**/security/**'
@@ -91,6 +98,7 @@ label-match-mode: 'none'
 ```
 
 **PR Size Limits:**
+
 ```yaml
 allowed-authors: 'dev-team, contributors'
 max-files-changed: '20'
@@ -101,6 +109,7 @@ size-limit-message: 'This PR is too large for auto-approval. Please break it int
 ```
 
 **Small Documentation Updates Only:**
+
 ```yaml
 allowed-authors: 'docs-team'
 path-filters: 'docs/**/*.md,*.md'
@@ -110,6 +119,7 @@ label-match-mode: 'none'
 ```
 
 **Release Please Automation:**
+
 ```yaml
 # .github/workflows/approve-release.yml
 name: Auto Approve Release Please PR
@@ -140,6 +150,7 @@ jobs:
 ```
 
 This configuration works best when combined with a CODEOWNERS file:
+
 ```
 # .github/CODEOWNERS
 # Default owner for all files
@@ -158,17 +169,17 @@ This configuration works best when combined with a CODEOWNERS file:
 |-------|----------|---------|-------------|
 | `github-token` | ✅ | - | GitHub token with repo and PR write permissions |
 | `allowed-authors` | ✅ | - | Comma-separated list of GitHub usernames allowed for auto-approval |
-| `required-labels` | ❌ | `''` | Comma-separated list of required PR labels |
-| `label-match-mode` | ❌ | `'all'` | How to match labels: `all`, `any`, or `none` |
-| `silent` | ❌ | `'false'` | Suppress job summary output |
-| `dry-run` | ❌ | `'false'` | Test mode - performs all checks but skips actual approval |
-| `merge-method` | ❌ | `'merge'` | Auto-merge method: `merge`, `squash`, or `rebase` |
-| `path-filters` | ❌ | `''` | File path patterns for conditional approval (supports glob patterns and ! for exclusion) |
-| `max-files-changed` | ❌ | `'0'` | Maximum number of files that can be changed in the PR (0 = no limit) |
-| `max-lines-added` | ❌ | `'0'` | Maximum number of lines that can be added in the PR (0 = no limit) |
-| `max-lines-removed` | ❌ | `'0'` | Maximum number of lines that can be removed in the PR (0 = no limit) |
-| `max-total-lines` | ❌ | `'0'` | Maximum total lines changed (added + removed) in the PR (0 = no limit) |
-| `size-limit-message` | ❌ | `'PR exceeds configured size limits'` | Custom message to display when PR exceeds size limits |
+| `required-labels` | - | `''` | Comma-separated list of required PR labels |
+| `label-match-mode` | - | `'all'` | How to match labels: `all`, `any`, or `none` |
+| `silent` | - | `'false'` | Suppress job summary output |
+| `dry-run` | - | `'false'` | Test mode - performs all checks but skips actual approval |
+| `merge-method` | - | `'merge'` | Auto-merge method: `merge`, `squash`, or `rebase` |
+| `path-filters` | - | `''` | File path patterns for conditional approval (supports glob patterns and ! for exclusion) |
+| `max-files-changed` | - | `'0'` | Maximum number of files that can be changed in the PR (0 = no limit) |
+| `max-lines-added` | - | `'0'` | Maximum number of lines that can be added in the PR (0 = no limit) |
+| `max-lines-removed` | - | `'0'` | Maximum number of lines that can be removed in the PR (0 = no limit) |
+| `max-total-lines` | - | `'0'` | Maximum total lines changed (added + removed) in the PR (0 = no limit) |
+| `size-limit-message` | - | `'PR exceeds configured size limits'` | Custom message to display when PR exceeds size limits |
 
 ### Outputs
 
@@ -179,15 +190,40 @@ This configuration works best when combined with a CODEOWNERS file:
 | `labels-match` | Whether the PR labels meet requirements |
 | `paths-match` | Whether the PR file paths meet requirements |
 
+## Handling Stale Approvals
+
+The action automatically handles scenarios where approvals become stale due to new commits:
+
+### Automatic Re-approval
+
+When new commits are pushed to a PR after approval:
+
+1. GitHub marks the previous approval as "stale"
+2. The action detects the stale approval when triggered
+3. It automatically re-approves the PR at the latest commit
+4. Auto-merge is re-enabled if it was disabled
+
+### Auto-merge Recovery
+
+If auto-merge was disabled due to new commits:
+
+1. The action checks the current auto-merge status
+2. Re-enables auto-merge after re-approval
+3. Handles edge cases gracefully with retry logic
+
+This ensures continuous automation even when PRs are updated with new commits or force-pushed.
+
 ## Security Considerations
 
 ### Token Security
+
 - **Use GitHub Apps** instead of Personal Access Tokens when possible
 - **Rotate tokens regularly** and monitor for unauthorized usage
 - **Limit token scope** to minimum required permissions
 - **Store tokens securely** in GitHub Secrets, never in code
 
 ### Access Control
+
 - **Restrict allowed authors** to trusted users and verified bots only
 - **Use label requirements** for additional manual control gates
 - **Enable branch protection** rules to enforce review requirements
@@ -198,6 +234,7 @@ This configuration works best when combined with a CODEOWNERS file:
   - Consider requiring PR reviews from code owners for sensitive paths
 
 ### Compliance & Audit
+
 - **Review audit logs** regularly for unauthorized approval attempts
 - **Document approval policies** and ensure team understanding
 - **Test security controls** periodically with security team

@@ -118,6 +118,63 @@ check_existing_approval() {
     return 1
 }
 
+# Function to check if approval is stale or missing
+check_approval_status() {
+    local pr_number="$1"
+    
+    # Get current user info
+    local current_user
+    if ! current_user=$(gh api user --jq '.login' 2>&1); then
+        # Check if it's a GitHub App by trying the app endpoint
+        local app_slug
+        if app_slug=$(gh api /app --jq '.slug' 2>&1) && [[ -n "$app_slug" ]]; then
+            current_user="${app_slug}[bot]"
+        elif [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+            # For GITHUB_TOKEN in Actions, use the actor
+            current_user="${GITHUB_ACTOR:-github-actions[bot]}"
+        else
+            log_error "Unable to determine current user for approval check"
+            return 2
+        fi
+    fi
+    
+    log_info "Checking approval status for $current_user..."
+    
+    # Get the latest commit SHA for the PR
+    local latest_commit
+    if ! latest_commit=$(gh pr view "$pr_number" --json headRefOid --repo "$GITHUB_REPOSITORY" --jq '.headRefOid' 2>&1); then
+        log_error "Failed to get latest commit SHA: $latest_commit"
+        return 2
+    fi
+    
+    # Check if we have an approval at the latest commit
+    local approval_at_head
+    if ! approval_at_head=$(gh api "/repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/reviews" --jq ".[] | select(.user.login == \"$current_user\" and .state == \"APPROVED\" and .commit_id == \"$latest_commit\") | .id" 2>&1); then
+        log_error "Failed to check reviews: $approval_at_head"
+        return 2
+    fi
+    
+    if [[ -n "$approval_at_head" ]]; then
+        log_info "Found valid approval at latest commit"
+        return 0  # Approval exists and is current
+    fi
+    
+    # Check if we have any approval (potentially stale)
+    local any_approval
+    if ! any_approval=$(gh api "/repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/reviews" --jq ".[] | select(.user.login == \"$current_user\" and .state == \"APPROVED\") | .id" 2>&1); then
+        log_error "Failed to check for any approvals: $any_approval"
+        return 2
+    fi
+    
+    if [[ -n "$any_approval" ]]; then
+        log_info "Found stale approval (not at latest commit)"
+        return 1  # Stale approval exists
+    fi
+    
+    log_info "No existing approval found"
+    return 2  # No approval exists
+}
+
 # Function to add PR comment explaining the approval
 add_approval_comment() {
     local pr_number="$1"
@@ -126,11 +183,16 @@ add_approval_comment() {
     local label_mode="$4"
     local checks_total="$5"
     local checks_passed="$6"
+    local is_reapproval="${7:-false}"
     
     log_info "Adding approval explanation comment to PR #$pr_number..."
     
     # Build the comment message
-    local comment="## 🤖 Auto-Approval\n\n"
+    local comment="## 🤖 Auto-Approval"
+    if [[ "$is_reapproval" == "true" ]]; then
+        comment+=" (Re-approval after new commits)"
+    fi
+    comment+="\n\n"
     comment+="This pull request meets all criteria for automatic approval:\n\n"
     
     # Author verification
@@ -196,10 +258,39 @@ approve_pr() {
     return 0
 }
 
+# Function to check if auto-merge is enabled
+check_auto_merge_status() {
+    local pr_number="$1"
+    
+    # Check if auto-merge is enabled
+    local auto_merge_enabled
+    if ! auto_merge_enabled=$(gh pr view "$pr_number" --json autoMergeRequest --repo "$GITHUB_REPOSITORY" --jq '.autoMergeRequest != null' 2>&1); then
+        log_error "Failed to check auto-merge status: $auto_merge_enabled"
+        return 2
+    fi
+    
+    if [[ "$auto_merge_enabled" == "true" ]]; then
+        log_info "Auto-merge is already enabled for PR #$pr_number"
+        return 0
+    else
+        log_info "Auto-merge is not enabled for PR #$pr_number"
+        return 1
+    fi
+}
+
 # Function to enable auto-merge for the PR
 enable_auto_merge() {
     local pr_number="$1"
     local merge_method="${2:-merge}"
+    local force="${3:-false}"
+    
+    # Check if auto-merge is already enabled (unless forcing)
+    if [[ "$force" != "true" ]]; then
+        if check_auto_merge_status "$pr_number"; then
+            log_info "Auto-merge already enabled, skipping"
+            return 0
+        fi
+    fi
     
     log_info "Enabling auto-merge for PR #$pr_number using $merge_method method..."
     
@@ -215,6 +306,11 @@ enable_auto_merge() {
     
     # Enable auto-merge using the specified method
     if ! result=$(gh pr merge "$pr_number" --auto --$merge_method --repo "$GITHUB_REPOSITORY" 2>&1); then
+        # Check if the error is because auto-merge is already enabled
+        if [[ "$result" =~ "already enabled" ]] || [[ "$result" =~ "is already queued to merge" ]]; then
+            log_info "Auto-merge was already enabled or queued"
+            return 0
+        fi
         log_error "Failed to enable auto-merge: $result"
         return 1
     fi
@@ -270,19 +366,38 @@ main() {
         exit 1
     fi
     
-    # Check if already approved
-    if check_existing_approval "$pr_number"; then
-        log_info "Skipping duplicate approval"
-        exit 0
-    fi
+    # Check approval status
+    check_approval_status "$pr_number"
+    local approval_status=$?
+    local is_reapproval="false"
+    
+    case $approval_status in
+        0)
+            # Approval exists and is current
+            log_info "Approval is already current at latest commit, skipping duplicate approval"
+            exit 0
+            ;;
+        1)
+            # Stale approval exists
+            log_info "Stale approval detected, will re-approve at latest commit"
+            is_reapproval="true"
+            ;;
+        2)
+            # No approval exists
+            log_info "No existing approval found, will approve"
+            ;;
+    esac
     
     # Check if running in dry-run mode
     local auto_merge_enabled="false"
     if [[ "${DRY_RUN:-false}" == "true" ]]; then
         log_info "DRY RUN MODE: Would enable auto-merge and approve PR #$pr_number but skipping actual actions"
     else
-        # Enable auto-merge first
+        # For re-approvals, we need to ensure auto-merge is re-enabled
+        # because it gets disabled when new commits are pushed
         local merge_method="${MERGE_METHOD:-merge}"
+        
+        # Always try to enable auto-merge (it will check if already enabled)
         if enable_auto_merge "$pr_number" "$merge_method"; then
             auto_merge_enabled="true"
         else
@@ -294,6 +409,18 @@ main() {
         if ! approve_pr "$pr_number"; then
             exit 1
         fi
+        
+        # If this was a re-approval and auto-merge failed earlier, try once more
+        # This handles the case where auto-merge needs the approval to exist first
+        if [[ "$is_reapproval" == "true" ]] && [[ "$auto_merge_enabled" != "true" ]]; then
+            log_info "Retrying auto-merge after re-approval..."
+            if enable_auto_merge "$pr_number" "$merge_method" "true"; then
+                auto_merge_enabled="true"
+                log_success "Successfully re-enabled auto-merge after re-approval"
+            else
+                log_warning "Auto-merge could not be re-enabled after re-approval"
+            fi
+        fi
     fi
     
     # Add action summary (unless silent mode is enabled)
@@ -302,13 +429,20 @@ main() {
             if [[ "${DRY_RUN:-false}" == "true" ]]; then
                 echo "## 🤖 Auto-Approval Dry Run Completed"
             else
-                echo "## 🤖 Auto-Approval Completed"
+                if [[ "$is_reapproval" == "true" ]]; then
+                    echo "## 🤖 Auto-Approval Completed (Re-approval after new commits)"
+                else
+                    echo "## 🤖 Auto-Approval Completed"
+                fi
             fi
             echo ""
             echo "### Pull Request Details"
             echo "- **PR**: #$pr_number"
             echo "- **Author**: @$pr_author"
             echo "- **Timestamp**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+            if [[ "$is_reapproval" == "true" ]]; then
+                echo "- **Type**: Re-approval (previous approval was stale due to new commits)"
+            fi
             echo ""
             echo "### ✅ Author Verification"
             echo "- **PR Author**: @$pr_author"
