@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.2.2...auto-approve-action@v1.3.0) (2025-07-26)
+
+
+### Features
+
+* add stale approval handling and re-approval logic for PRs ([2b40a27](https://github.com/lekman/auto-approve-action/commit/2b40a27e3d7b9c34e6a7aac0a3268bfbee787da9))
+
 ## [1.2.2](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.2.1...auto-approve-action@v1.2.2) (2025-06-12)
 
 
