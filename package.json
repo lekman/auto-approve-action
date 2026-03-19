@@ -1,0 +1,20 @@
+{
+	"name": "auto-approve-action",
+	"version": "1.5.0",
+	"private": true,
+	"type": "module",
+	"description": "Auto-approve PRs based on allow list, label requirements, and status check verification",
+	"scripts": {
+		"build": "bun build src/auto-approve.ts --outfile=dist/auto-approve.js --target=node --minify",
+		"test": "bun test tests/unit/",
+		"test:coverage": "bun test tests/unit/ --coverage",
+		"lint": "tsc --noEmit",
+		"typecheck": "tsc --noEmit",
+		"verify": "bun run typecheck && bun run test:coverage"
+	},
+	"devDependencies": {
+		"@types/bun": "^1.0.0",
+		"@types/node": "^22.0.0",
+		"typescript": "^5.5.0"
+	}
+}

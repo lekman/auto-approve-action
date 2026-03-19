@@ -1,0 +1,17 @@
+[test]
+# Coverage thresholds — 80% minimum on lines and functions.
+coverageThreshold = { line = 0.8, function = 0.8 }
+
+# Output directory for coverage reports.
+coverageDir = "coverage"
+
+# Paths excluded from coverage.
+# System wrappers contain no testable business logic — they wrap external I/O.
+# Barrel re-exports have no logic of their own.
+coveragePathIgnorePatterns = [
+  "**/*.system.ts",
+  "**/index.ts",
+  "tests/**",
+  "**/*.test.ts",
+  "node_modules/**",
+]
