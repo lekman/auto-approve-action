@@ -56,87 +56,24 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Validate Inputs
+    - name: Auto Approve
+      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
       shell: bash
-      run: |
-        "$ACTION_PATH/scripts/validate-inputs.sh"
+      run: node "${{ github.action_path }}/dist/auto-approve.js"
       env:
-        ACTION_PATH: ${{ github.action_path }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_ACTOR: ${{ github.actor }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
         ALLOWED_AUTHORS: ${{ inputs.allowed-authors }}
         REQUIRED_LABELS: ${{ inputs.required-labels }}
         LABEL_MATCH_MODE: ${{ inputs.label-match-mode }}
+        SILENT: ${{ inputs.silent }}
+        DRY_RUN: ${{ inputs.dry-run }}
         MERGE_METHOD: ${{ inputs.merge-method }}
         PATH_FILTERS: ${{ inputs.path-filters }}
-        MAX_FILES_CHANGED: ${{ inputs.max-files-changed }}
-        MAX_LINES_ADDED: ${{ inputs.max-lines-added }}
-        MAX_LINES_REMOVED: ${{ inputs.max-lines-removed }}
-        MAX_TOTAL_LINES: ${{ inputs.max-total-lines }}
-    
-    - name: Verify PR Author
-      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
-      shell: bash
-      run: |
-        "$ACTION_PATH/scripts/verify-author.sh"
-      env:
-        ACTION_PATH: ${{ github.action_path }}
-        GITHUB_TOKEN: ${{ inputs.github-token }}
-        GITHUB_REPOSITORY: ${{ github.repository }}
-        ALLOWED_AUTHORS: ${{ inputs.allowed-authors }}
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-    
-    - name: Validate PR Labels
-      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
-      shell: bash
-      run: |
-        "$ACTION_PATH/scripts/validate-labels.sh"
-      env:
-        ACTION_PATH: ${{ github.action_path }}
-        GITHUB_TOKEN: ${{ inputs.github-token }}
-        GITHUB_REPOSITORY: ${{ github.repository }}
-        REQUIRED_LABELS: ${{ inputs.required-labels }}
-        LABEL_MATCH_MODE: ${{ inputs.label-match-mode }}
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-    
-    - name: Validate File Paths
-      if: (github.event_name == 'pull_request' || github.event_name == 'pull_request_target') && inputs.path-filters != ''
-      shell: bash
-      run: |
-        "$ACTION_PATH/scripts/validate-paths.sh"
-      env:
-        ACTION_PATH: ${{ github.action_path }}
-        GITHUB_TOKEN: ${{ inputs.github-token }}
-        GITHUB_REPOSITORY: ${{ github.repository }}
-        PATH_FILTERS: ${{ inputs.path-filters }}
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-    
-    - name: Validate PR Size
-      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
-      shell: bash
-      run: |
-        "$ACTION_PATH/scripts/validate-size.sh"
-      env:
-        ACTION_PATH: ${{ github.action_path }}
-        GITHUB_TOKEN: ${{ inputs.github-token }}
-        GITHUB_REPOSITORY: ${{ github.repository }}
-        PR_NUMBER: ${{ github.event.pull_request.number }}
         MAX_FILES_CHANGED: ${{ inputs.max-files-changed }}
         MAX_LINES_ADDED: ${{ inputs.max-lines-added }}
         MAX_LINES_REMOVED: ${{ inputs.max-lines-removed }}
         MAX_TOTAL_LINES: ${{ inputs.max-total-lines }}
         SIZE_LIMIT_MESSAGE: ${{ inputs.size-limit-message }}
-    
-    - name: Approve Pull Request
-      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
-      shell: bash
-      run: |
-        "$ACTION_PATH/scripts/approve-pr.sh"
-      env:
-        ACTION_PATH: ${{ github.action_path }}
-        GITHUB_TOKEN: ${{ inputs.github-token }}
-        GITHUB_REPOSITORY: ${{ github.repository }}
-        GITHUB_ACTOR: ${{ github.actor }}
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-        LABEL_MATCH_MODE: ${{ inputs.label-match-mode }}
-        SILENT: ${{ inputs.silent }}
-        DRY_RUN: ${{ inputs.dry-run }}
-        MERGE_METHOD: ${{ inputs.merge-method }}
