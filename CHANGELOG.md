@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.2.2...auto-approve-action@v1.3.0) (2026-03-19)
+
+
+### Features
+
+* add stale approval handling and re-approval logic for PRs ([2b40a27](https://github.com/lekman/auto-approve-action/commit/2b40a27e3d7b9c34e6a7aac0a3268bfbee787da9))
+* rewrite action in TypeScript with clean architecture ([c1a1176](https://github.com/lekman/auto-approve-action/commit/c1a11764e35d0e545aecadc7cd227f05d55b397e))
+
 ## [1.2.2](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.2.1...auto-approve-action@v1.2.2) (2025-06-12)
 
 
