@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.3.0...auto-approve-action@v1.3.1) (2026-03-19)
+
+
+### Bug Fixes
+
+* pin GitHub Actions to commit SHAs for supply chain security ([fb3b2e7](https://github.com/lekman/auto-approve-action/commit/fb3b2e7efe88b234f8adc3c8ec8b0e9e77bad48a))
+
 ## [1.3.0](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.2.2...auto-approve-action@v1.3.0) (2026-03-19)
 
 
