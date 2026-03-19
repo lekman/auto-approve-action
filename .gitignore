@@ -1,8 +1,11 @@
 node_modules/
-dist/
+dist/*
 !dist/auto-approve.js
 coverage/
 *.tsbuildinfo
+
+# Override global gitignore — CLAUDE.md is project documentation
+!CLAUDE.md
 
 # OS
 .DS_Store
