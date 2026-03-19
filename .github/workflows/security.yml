@@ -32,7 +32,7 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: actions
+          languages: actions,javascript-typescript
           queries: security-and-quality
           config-file: .github/codeql-config.yml
 

@@ -16,45 +16,23 @@ permissions:
   issues: write
 
 jobs:
-  # Unit Tests - Run all script unit tests
+  # Unit Tests - Run TypeScript unit tests with Bun
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' || !startsWith(github.head_ref, 'release-please--')
-    strategy:
-      fail-fast: false
-      matrix:
-        test:
-          - { name: "Input Validation", script: "./scripts/test-validate-inputs.sh" }
-          - { name: "Author Verification", script: "./scripts/test-verify-author.sh" }
-          - { name: "Label Validation", script: "./scripts/test-validate-labels.sh" }
-          - { name: "Approval Execution", script: "./scripts/test-approve-pr.sh" }
-          - { name: "Path Validation", script: "./scripts/test-validate-paths.sh" }
-          - { name: "Size Validation", script: "./scripts/test-validate-size.sh" }
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Get GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-          repositories: ${{ github.event.repository.name }}
-      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
       - name: Install dependencies
-        run: |
-          # Add small random delay to avoid parallel apt conflicts
-          sleep $((RANDOM % 3))
-          sudo apt-get update
-          sudo apt-get install -y jq
-      
-      - name: Run ${{ matrix.test.name }} Tests
-        run: ${{ matrix.test.script }}
-        env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-          CI: true
+        run: bun install --frozen-lockfile
+
+      - name: Verify (typecheck + test with coverage)
+        run: bun run verify
 
   # Integration Tests - Test the action in PR context
   integration-tests:
