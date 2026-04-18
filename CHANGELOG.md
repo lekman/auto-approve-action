@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.2](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.3.1...auto-approve-action@v1.3.2) (2026-04-18)
+
+
+### Bug Fixes
+
+* **dependabot:** bump @types/node from 22.19.17 to 25.6.0 ([feb2f3e](https://github.com/lekman/auto-approve-action/commit/feb2f3e8e8dccc89067dd3d80622c2d740e91d87))
+* **dependabot:** bump @types/node from 22.19.17 to 25.6.0 ([37971c9](https://github.com/lekman/auto-approve-action/commit/37971c921e5a4b2683d03f5ab9e94a0d94109202))
+* **dependabot:** bump the all-actions group with 4 updates ([0d66995](https://github.com/lekman/auto-approve-action/commit/0d66995267956b0f0c558ca0a7528df79cb069f2))
+* **dependabot:** bump the all-actions group with 4 updates ([dca89f7](https://github.com/lekman/auto-approve-action/commit/dca89f7fdc70df3e38764d05c7d416ef352117e1))
+* **dependabot:** bump typescript from 5.9.3 to 6.0.3 ([e5650ad](https://github.com/lekman/auto-approve-action/commit/e5650adaaf87c40f35a8d76930a5e6e42e870c5b))
+* **dependabot:** bump typescript from 5.9.3 to 6.0.3 ([6efa3bd](https://github.com/lekman/auto-approve-action/commit/6efa3bd644206d0f7c1f5f5b7331a0d49fee9d9a))
+* **deps:** regenerate bun.lock for TypeScript 6.0.3 ([30b9bee](https://github.com/lekman/auto-approve-action/commit/30b9bee24202bd07be16f71a963d2859c5c0c665))
+
 ## [1.3.1](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.3.0...auto-approve-action@v1.3.1) (2026-03-19)
 
 
