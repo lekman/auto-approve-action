@@ -130,7 +130,7 @@ describe("validateAuthor with GitHub App logins", () => {
 		expect(result.passed).toBe(true);
 	});
 
-	it("matches when the allow-list uses the [bot] form and the author does too", () => {
+	it("matches when both sides use the [bot] form", () => {
 		// Arrange
 		const author = "lekman-release-please-bot[bot]";
 		const allowedAuthors = ["lekman-release-please-bot[bot]"];
@@ -154,7 +154,7 @@ describe("validateAuthor with GitHub App logins", () => {
 		expect(result.passed).toBe(true);
 	});
 
-	it("does not append [bot] to a plain login, so a human is not turned into a bot", () => {
+	it("does not append [bot] to a plain login", () => {
 		// Arrange
 		const author = "lekman-release-please-bot";
 		const allowedAuthors = ["lekman-release-please-bot[bot]"];

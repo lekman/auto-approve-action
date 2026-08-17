@@ -13,8 +13,12 @@ import type { CheckResult } from "./types.js";
  * unchanged, and `[bot]` is not appended to anything that lacks the `app/`
  * prefix, so `dependabot[bot]` still has to be written in full.
  */
+const APP_PREFIX = "app/";
+
 function normaliseAuthor(author: string): string {
-	return author.startsWith("app/") ? `${author.slice(4)}[bot]` : author;
+	return author.startsWith(APP_PREFIX)
+		? `${author.slice(APP_PREFIX.length)}[bot]`
+		: author;
 }
 
 /**
