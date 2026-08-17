@@ -16,9 +16,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      # No continue-on-error. With it, this job reported success while the
+      # step failed — the token returned 401 Unauthorized from 25 July and no
+      # release pull request was approved for weeks, with nothing to show it.
+      # This job only runs on release-please branches, so failing loudly here
+      # blocks nothing else.
       - name: Auto Approve PR
         id: auto-approve
-        continue-on-error: true
         uses: ./
         with:
           github-token: ${{ secrets.CODE_OWNER_TOKEN }}
