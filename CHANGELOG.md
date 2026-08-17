@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.3](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.3.2...auto-approve-action@v1.3.3) (2026-08-17)
+
+
+### Bug Fixes
+
+* match GitHub App authors written either way ([1b9a7a7](https://github.com/lekman/auto-approve-action/commit/1b9a7a713b086e2900f7fba75ff31772b7196b9b))
+* match GitHub App authors written either way ([a9a4a2a](https://github.com/lekman/auto-approve-action/commit/a9a4a2a9ab6b2478f95fe29554d9bd3fd60385b5))
+
 ## [1.3.2](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.3.1...auto-approve-action@v1.3.2) (2026-07-25)
 
 
