@@ -170,6 +170,12 @@ jobs:
 
 Auto-approve Release Please PRs for automated releases.
 
+> **GitHub App authors.** The API reports an App's login as `name[bot]`, while
+> `gh pr view --json author` prints `app/name`. Either spelling works in
+> `allowed-authors` — they are normalised to the same value. A plain login is
+> never turned into a bot login, so `dependabot[bot]` must be written in full.
+
+
 ```yaml
 name: Auto Approve Release
 on:
