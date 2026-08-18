@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.4](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.3.3...auto-approve-action@v1.3.4) (2026-08-18)
+
+
+### Bug Fixes
+
+* **ci:** stop asserting success against the pull request's own files ([89c2cb3](https://github.com/lekman/auto-approve-action/commit/89c2cb3ac7fc231c88714e415337bd6d48cb5e85))
+
 ## [1.3.3](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.3.2...auto-approve-action@v1.3.3) (2026-08-17)
 
 
