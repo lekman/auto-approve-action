@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.5](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.3.4...auto-approve-action@v1.3.5) (2026-10-19)
+
+
+### Bug Fixes
+
+* **dependabot:** bump actions/create-github-app-token ([623e644](https://github.com/lekman/auto-approve-action/commit/623e64487084b62f4f32cf1c4954337b9b98a2e7))
+* **dependabot:** bump actions/create-github-app-token from 3.2.0 to 3.3.0 in the all-actions group ([80aa1a1](https://github.com/lekman/auto-approve-action/commit/80aa1a16984b7be71a35c8ee67de369b13eef6df))
+
 ## [1.3.4](https://github.com/lekman/auto-approve-action/compare/auto-approve-action@v1.3.3...auto-approve-action@v1.3.4) (2026-08-18)
 
 
